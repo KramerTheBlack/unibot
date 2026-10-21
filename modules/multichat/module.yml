@@ -1,0 +1,40 @@
+name: multichat
+version: 2026.10.21_1
+type: system
+required: true
+description: Multi-chat module for UniBot. Manages connections to various chat platforms (VK, Telegram, MAX) and handles bot messages.
+author: UniBot Team
+license: MIT
+
+parameters:
+  supported_platforms:
+    - vk
+    - telegram
+    - max
+  
+interfaces:
+  - name: message_processing
+    type: api
+    description: Process incoming messages from chat platforms
+  - name: message_sending
+    type: api
+    description: Send messages to chat platforms
+  - name: bot_management
+    type: api
+    description: Manage bot instances and configurations
+  - name: webhook
+    type: api
+    description: Receive webhook notifications from chat platforms
+  - name: command_routing
+    type: internal
+    description: Route commands to appropriate modules
+  
+  - name: state_management
+    type: internal
+    description: Manage conversation state for users
+
+dependencies:
+  - core
+  - auth
+  - menu
+  - llm

@@ -1,0 +1,403 @@
+# Datastore Module API
+# Version: 2026.10.21_1
+
+## Database Connection Endpoints
+
+### List All Connections
+GET /api/v1/connections
+Response: {
+  "connections": [
+    {
+      "connection_id": "string",
+      "name": "string",
+      "type": "sqlite|postgresql|mysql|mssql|file|redis|mongodb",
+      "status": "active|inactive|error",
+      "created_at": "timestamp",
+      "last_used": "timestamp"
+    }
+  ]
+}
+
+### Create Connection
+POST /api/v1/connections
+Request: {
+  "name": "string",
+  "type": "sqlite|postgresql|mysql|mssql|file|redis|mongodb",
+  "connection_string": "string",
+  "username": "string",
+  "password": "string",
+  "database": "string",
+  "host": "string",
+  "port": "number",
+  "ssl_enabled": "boolean",
+  "options": "object"
+}
+Response: {
+  "status": "success|error",
+  "connection_id": "string",
+  "message": "string"
+}
+
+### Get Connection Details
+GET /api/v1/connections/{connection_id}
+Response: {
+  "connection_id": "string",
+  "name": "string",
+  "type": "string",
+  "config": "object",
+  "status": "active|inactive|error",
+  "created_at": "timestamp",
+  "last_used": "timestamp",
+  "last_error": "string"
+}
+
+### Update Connection
+PUT /api/v1/connections/{connection_id}
+Request: Same as create, but all fields optional
+Response: {"status": "success|error", "message": "string"}
+
+### Delete Connection
+DELETE /api/v1/connections/{connection_id}
+Response: {"status": "success|error", "message": "string"}
+
+### Test Connection
+POST /api/v1/connections/{connection_id}/test
+Response: {
+  "status": "success|error",
+  "message": "string",
+  "latency": "number",
+  "details": "object"
+}
+
+## Query Endpoints
+
+### Execute Query
+POST /api/v1/connections/{connection_id}/query
+Request: {
+  "query": "string",
+  "parameters": "object|array",
+  "fetch": "all|one|first",
+  "timeout": "number"
+}
+Response: {
+  "status": "success|error",
+  "results": "array",
+  "columns": "array",
+  "row_count": "number",
+  "execution_time": "number",
+  "error": "string"
+}
+
+### Execute Query on Named Connection
+POST /api/v1/query/{connection_name}
+Request: Same as above
+Response: Same as above
+
+### Insert Data
+POST /api/v1/connections/{connection_id}/insert
+Request: {
+  "table": "string",
+  "data": {"object" | ["array"]},  # Single object or array of objects
+  "return_ids": "boolean"
+}
+Response: {
+  "status": "success|error",
+  "inserted_count": "number",
+  "ids": ["array"],  # If return_ids is true
+  "error": "string"
+}
+
+### Update Data
+POST /api/v1/connections/{connection_id}/update
+Request: {
+  "table": "string",
+  "data": "object",
+  "where": "object",
+  "limit": "number"
+}
+Response: {
+  "status": "success|error",
+  "updated_count": "number",
+  "error": "string"
+}
+
+### Delete Data
+POST /api/v1/connections/{connection_id}/delete
+Request: {
+  "table": "string",
+  "where": "object",
+  "limit": "number"
+}
+Response: {
+  "status": "success|error",
+  "deleted_count": "number",
+  "error": "string"
+}
+
+### Get Table Schema
+GET /api/v1/connections/{connection_id}/tables/{table_name}/schema
+Response: {
+  "status": "success|error",
+  "table": "string",
+  "columns": [
+    {
+      "name": "string",
+      "type": "string",
+      "nullable": "boolean",
+      "default": "any",
+      "primary_key": "boolean",
+      "auto_increment": "boolean"
+    }
+  ],
+  "indexes": [
+    {
+      "name": "string",
+      "columns": ["array"],
+      "unique": "boolean"
+    }
+  ],
+  "foreign_keys": ["array"],
+  "error": "string"
+}
+
+### List Tables
+GET /api/v1/connections/{connection_id}/tables
+Response: {
+  "status": "success|error",
+  "tables": [
+    {
+      "name": "string",
+      "row_count": "number",
+      "size": "number"
+    }
+  ],
+  "error": "string"
+}
+
+### Get Table Data
+GET /api/v1/connections/{connection_id}/tables/{table_name}
+Query params: limit=number, offset=number, order_by=string, where=json
+Response: {
+  "status": "success|error",
+  "table": "string",
+  "data": ["array"],
+  "columns": ["array"],
+  "total": "number",
+  "limit": "number",
+  "offset": "number",
+  "error": "string"
+}
+
+## Schema Management
+
+### Create Table
+POST /api/v1/connections/{connection_id}/tables/{table_name}
+Request: {
+  "columns": [
+    {
+      "name": "string",
+      "type": "string",
+      "nullable": "boolean",
+      "default": "any",
+      "primary_key": "boolean",
+      "auto_increment": "boolean"
+    }
+  ],
+  "indexes": [
+    {
+      "name": "string",
+      "columns": ["array"],
+      "unique": "boolean"
+    }
+  ],
+  "foreign_keys": [
+    {
+      "name": "string",
+      "columns": ["array"],
+      "reference_table": "string",
+      "reference_columns": ["array"],
+      "on_delete": "CASCADE|SET NULL|RESTRICT"
+    }
+  ]
+}
+Response: {"status": "success|error", "message": "string"}
+
+### Drop Table
+DELETE /api/v1/connections/{connection_id}/tables/{table_name}
+Response: {"status": "success|error", "message": "string"}
+
+### Add Column
+POST /api/v1/connections/{connection_id}/tables/{table_name}/columns
+Request: {
+  "name": "string",
+  "type": "string",
+  "nullable": "boolean",
+  "default": "any"
+}
+Response: {"status": "success|error", "message": "string"}
+
+### Modify Column
+PUT /api/v1/connections/{connection_id}/tables/{table_name}/columns/{column_name}
+Request: Same as add column
+Response: {"status": "success|error", "message": "string"}
+
+### Drop Column
+DELETE /api/v1/connections/{connection_id}/tables/{table_name}/columns/{column_name}
+Response: {"status": "success|error", "message": "string"}
+
+## Backup and Restore
+
+### Create Backup
+POST /api/v1/connections/{connection_id}/backup
+Request: {
+  "backup_name": "string",
+  "compression": "none|gzip|bzip2",
+  "format": "sql|json|csv"
+}
+Response: {
+  "status": "success|error",
+  "backup_id": "string",
+  "file_path": "string",
+  "size": "number",
+  "created_at": "timestamp",
+  "message": "string"
+}
+
+### List Backups
+GET /api/v1/connections/{connection_id}/backups
+Response: {
+  "status": "success|error",
+  "backups": [
+    {
+      "backup_id": "string",
+      "name": "string",
+      "file_path": "string",
+      "size": "number",
+      "created_at": "timestamp"
+    }
+  ],
+  "error": "string"
+}
+
+### Restore Backup
+POST /api/v1/connections/{connection_id}/restore
+Request: {
+  "backup_id": "string",
+  "confirm": "boolean"
+}
+Response: {
+  "status": "success|error",
+  "message": "string",
+  "restored_tables": ["array"],
+  "execution_time": "number",
+  "error": "string"
+}
+
+### Download Backup
+GET /api/v1/connections/{connection_id}/backups/{backup_id}/download
+Response: File download
+
+## Migration Endpoints
+
+### Create Migration
+POST /api/v1/connections/{connection_id}/migrations
+Request: {
+  "name": "string",
+  "up": ["array"],  # Array of SQL statements
+  "down": ["array"]  # Array of SQL statements for rollback
+}
+Response: {
+  "status": "success|error",
+  "migration_id": "string",
+  "message": "string"
+}
+
+### Run Migration
+POST /api/v1/connections/{connection_id}/migrations/{migration_id}/run
+Response: {
+  "status": "success|error",
+  "applied": "boolean",
+  "execution_time": "number",
+  "message": "string"
+}
+
+### Rollback Migration
+POST /api/v1/connections/{connection_id}/migrations/{migration_id}/rollback
+Response: {
+  "status": "success|error",
+  "rolled_back": "boolean",
+  "execution_time": "number",
+  "message": "string"
+}
+
+### List Migrations
+GET /api/v1/connections/{connection_id}/migrations
+Response: {
+  "status": "success|error",
+  "migrations": [
+    {
+      "migration_id": "string",
+      "name": "string",
+      "applied": "boolean",
+      "applied_at": "timestamp",
+      "created_at": "timestamp"
+    }
+  ],
+  "error": "string"
+}
+
+## Cache Endpoints
+
+### Clear Query Cache
+DELETE /api/v1/cache/clear
+Response: {"status": "success|error", "cleared_count": "number"}
+
+### Get Cache Statistics
+GET /api/v1/cache/stats
+Response: {
+  "hits": "number",
+  "misses": "number",
+  "hit_rate": "number",
+  "size": "number",
+  "max_size": "number"
+}
+
+## Health and Status
+
+### Health Check
+GET /api/v1/health
+Response: {
+  "status": "healthy|degraded|unhealthy",
+  "connections": [
+    {
+      "connection_id": "string",
+      "status": "active|inactive|error"
+    }
+  ],
+  "active_connections": "number",
+  "query_cache_size": "number"
+}
+
+### Get Statistics
+GET /api/v1/stats
+Response: {
+  "total_queries": "number",
+  "total_execution_time": "number",
+  "queries_by_connection": "object",
+  "queries_by_table": "object"
+}
+
+## Error Codes
+- 100: Connection not found
+- 101: Invalid connection configuration
+- 102: Connection failed
+- 103: Query execution error
+- 104: Syntax error in query
+- 105: Table not found
+- 106: Column not found
+- 107: Permission denied
+- 108: Timeout
+- 200: Invalid request data
+- 201: Resource already exists
+- 300: Migration already applied
+- 301: Migration not applied

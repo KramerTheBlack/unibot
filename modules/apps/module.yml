@@ -1,0 +1,25 @@
+name: apps
+version: 2026.10.21_1
+type: system
+required: true
+description: Apps module for UniBot. Dynamically loads and manages functional submodules (store, queue, test, tracking, etc.).
+author: UniBot Team
+license: MIT
+
+parameters:
+  apps_dir: /app
+  max_apps: 100
+  app_timeout: 30
+
+interfaces:
+  - name: dynamic_loader
+    type: internal
+    description: Dynamically loads and unloads functional modules
+  - name: app_router
+    type: internal
+    description: Routes commands to appropriate app modules
+  - name: app_manager
+    type: http
+    description: REST API for managing apps
+
+dependencies: []

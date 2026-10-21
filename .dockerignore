@@ -1,0 +1,80 @@
+# Docker ignore file for UniBot
+
+# Directories
+Dockerfile
+docker-compose*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Testing
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Logs and data
+*.log
+*.sqlite
+*.db
+logs/
+data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets - these should be mounted as volumes
+secrets/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+
+# Node (if using for frontend)
+node_modules/
+npm-debug.log
+
+# Temporary files
+*.tmp
+*.temp

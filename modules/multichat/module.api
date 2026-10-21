@@ -1,0 +1,459 @@
+# Multi-chat Module API
+# Version: 2026.10.21_1
+
+## Platform Management Endpoints
+
+### List Platforms
+GET /api/v1/platforms
+Response: {
+  "platforms": [
+    {
+      "name": "vk|telegram|max",
+      "enabled": "boolean",
+      "webhook_url": "string",
+      "status": "active|inactive|error",
+      "last_check": "timestamp",
+      "message_count": "number"
+    }
+  ]
+}
+
+### Get Platform Status
+GET /api/v1/platforms/{platform}
+Response: {
+  "platform": "string",
+  "enabled": "boolean",
+  "status": "active|inactive|error",
+  "webhook_url": "string",
+  "webhook_verified": "boolean",
+  "bots": [
+    {
+      "bot_id": "string",
+      "name": "string",
+      "token": "string (masked)",
+      "status": "active|inactive|error",
+      "last_message": "timestamp",
+      "message_count": "number",
+      "user_count": "number"
+    }
+  ],
+  "message_queue": {
+    "queued": "number",
+    "processing": "number",
+    "failed": "number"
+  }
+}
+
+### Enable Platform
+POST /api/v1/platforms/{platform}/enable
+Response: {"status": "success|error", "message": "string"}
+
+### Disable Platform
+POST /api/v1/platforms/{platform}/disable
+Response: {"status": "success|error", "message": "string"}
+
+## Bot Management Endpoints
+
+### List Bots
+GET /api/v1/bots
+Response: {
+  "bots": [
+    {
+      "bot_id": "string",
+      "name": "string",
+      "platform": "string",
+      "token": "string (masked)",
+      "status": "active|inactive|error",
+      "created_at": "timestamp",
+      "last_message": "timestamp",
+      "message_count": "number",
+      "user_count": "number"
+    }
+  ]
+}
+
+### Add Bot
+POST /api/v1/bots
+Request: {
+  "name": "string",
+  "platform": "vk|telegram|max",
+  "token": "string",
+  "webhook_url": "string",
+  "config": "object"
+}
+Response: {
+  "status": "success|error",
+  "bot_id": "string",
+  "message": "string"
+}
+
+### Get Bot Details
+GET /api/v1/bots/{bot_id}
+Response: {
+  "bot_id": "string",
+  "name": "string",
+  "platform": "string",
+  "status": "active|inactive|error",
+  "config": "object",
+  "webhook_info": "object",
+  "statistics": "object",
+  "created_at": "timestamp",
+  "updated_at": "timestamp"
+}
+
+### Update Bot
+PUT /api/v1/bots/{bot_id}
+Request: {
+  "name": "string",
+  "token": "string",
+  "config": "object",
+  "status": "active|inactive"
+}
+Response: {"status": "success|error", "message": "string"}
+
+### Delete Bot
+DELETE /api/v1/bots/{bot_id}
+Response: {"status": "success|error", "message": "string"}
+
+### Test Bot Connection
+POST /api/v1/bots/{bot_id}/test
+Response: {
+  "status": "success|error",
+  "message": "string",
+  "details": "object"
+}
+
+### Set Webhook
+POST /api/v1/bots/{bot_id}/webhook
+Request: {
+  "url": "string",
+  "max_connections": "number",
+  "allowed_updates": ["array"]
+}
+Response: {"status": "success|error", "message": "string"}
+
+### Delete Webhook
+DELETE /api/v1/bots/{bot_id}/webhook
+Response: {"status": "success|error", "message": "string"}
+
+## Message Processing Endpoints
+
+### Send Message
+POST /api/v1/bots/{bot_id}/send
+Request: {
+  "chat_id": "string",
+  "text": "string",
+  "parse_mode": "html|markdown|text",
+  "reply_to": "string",
+  "keyboard": "object",
+  "attachments": ["array"]
+}
+Response: {
+  "status": "success|error",
+  "message_id": "string",
+  "sent_at": "timestamp",
+  "error": "string"
+}
+
+### Broadcast Message
+POST /api/v1/bots/{bot_id}/broadcast
+Request: {
+  "text": "string",
+  "parse_mode": "html|markdown|text",
+  "targets": "all|users|admins|groups",
+  "exclude": ["array"]
+}
+Response: {
+  "status": "success|error",
+  "broadcast_id": "string",
+  "recipient_count": "number",
+  "error": "string"
+}
+
+### Get Message
+GET /api/v1/bots/{bot_id}/messages/{message_id}
+Response: {
+  "status": "success|error",
+  "message": "object",
+  "error": "string"
+}
+
+### Delete Message
+DELETE /api/v1/bots/{bot_id}/messages/{message_id}
+Response: {"status": "success|error", "message": "string"}
+
+### Edit Message
+POST /api/v1/bots/{bot_id}/messages/{message_id}/edit
+Request: {
+  "text": "string",
+  "parse_mode": "html|markdown|text",
+  "keyboard": "object"
+}
+Response: {"status": "success|error", "message": "string"}
+
+## Webhook Endpoints
+
+### Receive Webhook (Platform-specific)
+POST /webhook/{platform}
+Request: Platform-specific webhook payload
+Response: {"status": "success|error"}
+
+### Receive Webhook (Generic)
+POST /api/v1/webhook/{platform}
+Request: Platform-specific webhook payload
+Response: {"status": "success|error", "message_id": "string"}
+
+### Verify Webhook
+GET /api/v1/webhook/{platform}/verify
+Query params: token=string
+Response: {"status": "success|error", "verified": "boolean"}
+
+## User State Endpoints
+
+### Get User State
+GET /api/v1/users/{platform}/{user_id}/state
+Response: {
+  "status": "success|error",
+  "state": {
+    "current_menu": "string",
+    "menu_path": ["array"],
+    "context": "object",
+    "last_interaction": "timestamp",
+    "session_started": "timestamp"
+  },
+  "error": "string"
+}
+
+### Update User State
+POST /api/v1/users/{platform}/{user_id}/state
+Request: {
+  "current_menu": "string",
+  "menu_path": ["array"],
+  "context": "object"
+}
+Response: {"status": "success|error", "message": "string"}
+
+### Clear User State
+DELETE /api/v1/users/{platform}/{user_id}/state
+Response: {"status": "success|error", "message": "string"}
+
+## Command Routing Endpoints
+
+### Process Command
+POST /api/v1/process/command
+Request: {
+  "bot_id": "string",
+  "platform": "string",
+  "user_id": "string",
+  "chat_id": "string",
+  "text": "string",
+  "message_id": "string",
+  "state": "object"
+}
+Response: {
+  "status": "processed|ignored|error",
+  "response": "object",
+  "action": "string",
+  "target_module": "string",
+  "error": "string"
+}
+
+### Register Command Handler
+POST /api/v1/commands/register
+Request: {
+  "pattern": "string",
+  "handler": "string",
+  "module": "string",
+  "priority": "number",
+  "platforms": ["array"],
+  "description": "string"
+}
+Response: {"status": "success|error", "command_id": "string", "message": "string"}
+
+### Unregister Command Handler
+DELETE /api/v1/commands/{command_id}
+Response: {"status": "success|error", "message": "string"}
+
+### List Command Handlers
+GET /api/v1/commands
+Response: {
+  "commands": [
+    {
+      "command_id": "string",
+      "pattern": "string",
+      "module": "string",
+      "priority": "number",
+      "platforms": ["array"]
+    }
+  ]
+}
+
+## Statistics Endpoints
+
+### Get Bot Statistics
+GET /api/v1/bots/{bot_id}/stats
+Response: {
+  "status": "success|error",
+  "statistics": {
+    "messages_received": "number",
+    "messages_sent": "number",
+    "active_users": "number",
+    "new_users_today": "number",
+    "most_used_commands": [
+      {"command": "string", "count": "number"}
+    ]
+  },
+  "error": "string"
+}
+
+### Get Platform Statistics
+GET /api/v1/platforms/{platform}/stats
+Response: {
+  "status": "success|error",
+  "statistics": {
+    "bots": "number",
+    "messages_received": "number",
+    "messages_sent": "number",
+    "active_users": "number"
+  },
+  "error": "string"
+}
+
+### Get Overall Statistics
+GET /api/v1/stats
+Response: {
+  "status": "success|error",
+  "statistics": {
+    "total_bots": "number",
+    "total_messages": "number",
+    "active_users": "number",
+    "by_platform": "object",
+    "recent_activity": [
+      {"timestamp": "timestamp", "count": "number"}
+    ]
+  },
+  "error": "string"
+}
+
+## Health and Status
+
+### Health Check
+GET /api/v1/health
+Response: {
+  "status": "healthy|degraded|unhealthy",
+  "platforms": [
+    {
+      "platform": "string",
+      "status": "active|inactive|error",
+      "bots": "number"
+    }
+  ],
+  "active_bots": "number",
+  "message_queue": "object",
+  "error_rate": "number"
+}
+
+## Message Models
+
+### Incoming Message (from chat platforms)
+{
+  "update_id": "number",
+  "platform": "string",
+  "bot_id": "string",
+  "message": {
+    "message_id": "string",
+    "chat": {
+      "id": "string",
+      "type": "private|group|channel",
+      "title": "string",
+      "username": "string"
+    },
+    "from": {
+      "id": "string",
+      "first_name": "string",
+      "last_name": "string",
+      "username": "string",
+      "language_code": "string"
+    },
+    "date": "number",
+    "text": "string",
+    "entities": ["array"],
+    "reply_to_message": "object",
+    "forward_from": "object",
+    "attachments": [
+      {
+        "type": "photo|video|audio|document|sticker|voice|location",
+        "id": "string",
+        "file_id": "string",
+        "file_name": "string",
+        "file_size": "number",
+        "mime_type": "string",
+        "meta": "object"
+      }
+    ]
+  }
+}
+
+### Outgoing Message (to chat platforms)
+{
+  "chat_id": "string",
+  "text": "string",
+  "parse_mode": "html|markdown|text",
+  "reply_to_message_id": "string",
+  "disable_notification": "boolean",
+  "keyboard": {
+    "type": "reply|inline",
+    "buttons": [
+      [
+        {
+          "text": "string",
+          "callback_data": "string",
+          "url": "string",
+          "switch_inline_query": "string"
+        }
+      ]
+    ]
+  },
+  "attachments": [
+    {
+      "type": "photo|video|audio|document",
+      "file_id": "string",
+      "file_path": "string",
+      "caption": "string",
+      "meta": "object"
+    }
+  ]
+}
+
+### User State
+{
+  "user_id": "string",
+  "platform": "string",
+  "bot_id": "string",
+  "current_menu": "string",
+  "menu_path": ["/start", "/main"],
+  "context": {
+    "last_command": "string",
+    "last_parameters": "object",
+    "form_data": "object",
+    "session_data": "object"
+  },
+  "created_at": "timestamp",
+  "updated_at": "timestamp"
+}
+
+## Error Codes
+- 100: Platform not found
+- 101: Platform disabled
+- 102: Bot not found
+- 103: Bot not active
+- 104: Invalid token
+- 105: Webhook error
+- 106: Rate limit exceeded
+- 107: Message too long
+- 200: Invalid request data
+- 201: User not found
+- 202: Command not found
+- 203: Permission denied
+- 300: External API error
+- 301: Network error

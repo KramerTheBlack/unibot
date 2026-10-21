@@ -1,0 +1,988 @@
+#!/usr/bin/env python3
+"""
+UniBot Web Module
+Web administration console for UniBot
+Version: 2026.10.21_1
+"""
+
+import os
+import sys
+import json
+import uuid
+import time
+import threading
+import logging
+import logging.handlers
+from datetime import datetime, timedelta
+
+# Try to import Flask, if not available use built-in HTTP server
+try:
+    from flask import Flask, request, jsonify, render_template, redirect, url_for, session, make_response
+    from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+    from werkzeug.security import generate_password_hash, check_password_hash
+    USE_FLASK = True
+except ImportError:
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+    from urllib.parse import urlparse, parse_qs
+    USE_FLASK = False
+
+# Module metadata
+MODULE_NAME = "web"
+MODULE_VERSION = "2026.10.21_1"
+
+# Configuration
+CONFIG = {
+    "listen_address": "0.0.0.0",
+    "listen_port": 8080,
+    "use_https": False,
+    "ssl_cert": "/etc/ssl/certs/web.crt",
+    "ssl_key": "/etc/ssl/private/web.key",
+    "title": "UniBot Administration Console",
+    "owner_name": "UniBot Team",
+    "owner_email": "admin@unibot.local",
+    "admin_path": "/admin",
+    "theme": "default",
+    "session_timeout": 3600,
+    "secret_key": "default_change_me_secret_key_12345",
+    "log_level": "INFO",
+    "log_file": "/var/log/unibot/web.log",
+    "log_max_size": 10485760,
+    "log_backup_count": 5,
+    "static_dir": "/var/www/unibot/static",
+    "templates_dir": "/var/www/unibot/templates",
+    "core_endpoint": "http://core:5000",
+    "auth_endpoint": "http://auth:5001"
+}
+
+# Logging setup
+def setup_logging():
+    """Setup logging configuration"""
+    log_dir = os.path.dirname(CONFIG["log_file"])
+    if log_dir and not os.path.exists(log_dir):
+        os.makedirs(log_dir, exist_ok=True)
+    
+    logger = logging.getLogger(MODULE_NAME)
+    logger.setLevel(getattr(logging, CONFIG["log_level"].upper(), logging.INFO))
+    
+    # File handler with rotation
+    file_handler = logging.handlers.RotatingFileHandler(
+        CONFIG["log_file"],
+        maxBytes=CONFIG["log_max_size"],
+        backupCount=CONFIG["log_backup_count"]
+    )
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    ))
+    
+    # Console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    ))
+    
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+    
+    return logger
+
+logger = setup_logging()
+
+
+def load_config():
+    """Load configuration from module.conf"""
+    conf_path = os.path.join(os.path.dirname(__file__), "module.conf")
+    if os.path.exists(conf_path):
+        with open(conf_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    key = key.strip()
+                    value = value.strip()
+                    # Handle different types
+                    if value.isdigit():
+                        value = int(value)
+                    elif value.lower() in ['true', 'false']:
+                        value = value.lower() == 'true'
+                    # Update config
+                    CONFIG[key] = value
+
+
+def call_core_api(endpoint: str, method: str = "GET", data: dict = None) -> dict:
+    """Call core module API"""
+    import requests
+    url = f"{CONFIG['core_endpoint']}{endpoint}"
+    try:
+        if method == "GET":
+            response = requests.get(url, timeout=10)
+        elif method == "POST":
+            response = requests.post(url, json=data, timeout=10)
+        elif method == "PUT":
+            response = requests.put(url, json=data, timeout=10)
+        elif method == "DELETE":
+            response = requests.delete(url, timeout=10)
+        else:
+            return {"status": "error", "message": "Unsupported method"}
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"status": "error", "message": f"Core API error: {response.status_code}", "details": response.text}
+    except Exception as e:
+        logger.error(f"Error calling core API {endpoint}: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+def call_auth_api(endpoint: str, method: str = "GET", data: dict = None) -> dict:
+    """Call auth module API"""
+    import requests
+    url = f"{CONFIG['auth_endpoint']}{endpoint}"
+    try:
+        if method == "GET":
+            response = requests.get(url, timeout=10)
+        elif method == "POST":
+            response = requests.post(url, json=data, timeout=10)
+        elif method == "PUT":
+            response = requests.put(url, json=data, timeout=10)
+        elif method == "DELETE":
+            response = requests.delete(url, timeout=10)
+        else:
+            return {"status": "error", "message": "Unsupported method"}
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"status": "error", "message": f"Auth API error: {response.status_code}", "details": response.text}
+    except Exception as e:
+        logger.error(f"Error calling auth API {endpoint}: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+# Flask Application
+if USE_FLASK:
+    app = Flask(__name__)
+    app.secret_key = CONFIG["secret_key"]
+    app.permanent_session_lifetime = timedelta(seconds=CONFIG["session_timeout"])
+    
+    # Configure static and template folders
+    if not os.path.exists(CONFIG["static_dir"]):
+        os.makedirs(CONFIG["static_dir"], exist_ok=True)
+    if not os.path.exists(CONFIG["templates_dir"]):
+        os.makedirs(CONFIG["templates_dir"], exist_ok=True)
+    
+    app.static_folder = CONFIG["static_dir"]
+    app.template_folder = CONFIG["templates_dir"]
+    
+    # Flask-Login setup
+    login_manager = LoginManager()
+    login_manager.init_app(app)
+    login_manager.login_view = 'login'
+    
+    # User model
+    class User(UserMixin):
+        def __init__(self, user_data):
+            self.user_data = user_data
+        
+        def get_id(self):
+            return self.user_data.get("user_id", "")
+        
+        @property
+        def is_authenticated(self):
+            return True
+        
+        @property
+        def is_active(self):
+            return self.user_data.get("status") == "active"
+        
+        @property
+        def is_anonymous(self):
+            return False
+        
+        def has_role(self, role):
+            return role in self.user_data.get("roles", [])
+    
+    @login_manager.user_loader
+    def load_user(user_id):
+        # In a real implementation, this would load from auth module
+        # For now, we'll check the session
+        if 'user' in session:
+            user_data = session['user']
+            if user_data.get('user_id') == user_id:
+                return User(user_data)
+        return None
+    
+    # Routes
+    @app.route('/')
+    def index():
+        return redirect(url_for('dashboard'))
+    
+    @app.route('/admin')
+    @app.route('/admin/')
+    def admin_index():
+        return redirect(url_for('dashboard'))
+    
+    @app.route('/admin/login', methods=['GET', 'POST'])
+    def login():
+        if request.method == 'POST':
+            username = request.form.get('username', '')
+            password = request.form.get('password', '')
+            remember = request.form.get('remember', 'false').lower() == 'true'
+            
+            # Call auth module
+            result = call_auth_api('/api/v1/auth/login', 'POST', {
+                'username': username,
+                'password': password,
+                'platform': 'web'
+            })
+            
+            if result.get('status') == 'success':
+                # Store user in session
+                session['user'] = {
+                    'user_id': result.get('user_id'),
+                    'username': result.get('username'),
+                    'roles': result.get('roles', []),
+                    'token': result.get('token')
+                }
+                session['logged_in'] = True
+                if remember:
+                    session.permanent = True
+                
+                logger.info(f"User logged in: {username}")
+                return redirect(url_for('dashboard'))
+            else:
+                return render_template('login.html', error=result.get('message', 'Invalid credentials'))
+        
+        return render_template('login.html')
+    
+    @app.route('/admin/logout')
+    @login_required
+    def logout():
+        # Call auth module logout
+        token = session.get('user', {}).get('token')
+        if token:
+            call_auth_api('/api/v1/auth/logout', 'POST', {}, headers={'Authorization': f'Bearer {token}'})
+        
+        session.clear()
+        logger.info(f"User logged out")
+        return redirect(url_for('login'))
+    
+    @app.route('/admin/dashboard')
+    @login_required
+    def dashboard():
+        # Get modules list from core
+        modules_result = call_core_api('/api/v1/modules')
+        modules = modules_result.get('modules', [])
+        
+        # Get health status
+        health_result = call_core_api('/api/v1/health')
+        
+        return render_template('dashboard.html',
+                             user=current_user.user_data,
+                             modules=modules,
+                             health=health_result,
+                             title=CONFIG['title'],
+                             owner=CONFIG['owner_name'])
+    
+    @app.route('/admin/modules')
+    @login_required
+    def modules_list():
+        if not current_user.has_role('admin'):
+            return redirect(url_for('dashboard'))
+        
+        modules_result = call_core_api('/api/v1/modules')
+        modules = modules_result.get('modules', [])
+        
+        return render_template('modules.html',
+                             user=current_user.user_data,
+                             modules=modules,
+                             title=f"Modules - {CONFIG['title']}")
+    
+    @app.route('/admin/modules/<module_name>')
+    @login_required
+    def module_detail(module_name):
+        if not current_user.has_role('admin'):
+            return redirect(url_for('dashboard'))
+        
+        # Get module status
+        status_result = call_core_api(f'/api/v1/modules/{module_name}/status')
+        
+        return render_template('module_detail.html',
+                             user=current_user.user_data,
+                             module=status_result,
+                             module_name=module_name,
+                             title=f"{module_name} - {CONFIG['title']}")
+    
+    @app.route('/admin/users')
+    @login_required
+    def users_list():
+        if not current_user.has_role('admin'):
+            return redirect(url_for('dashboard'))
+        
+        # Get users from auth module
+        result = call_auth_api('/api/v1/auth/users', 'GET')
+        users = result.get('users', [])
+        
+        return render_template('users.html',
+                             user=current_user.user_data,
+                             users=users,
+                             title=f"Users - {CONFIG['title']}")
+    
+    @app.route('/admin/roles')
+    @login_required
+    def roles_list():
+        if not current_user.has_role('admin'):
+            return redirect(url_for('dashboard'))
+        
+        # Get roles from auth module
+        result = call_auth_api('/api/v1/auth/roles', 'GET')
+        roles = result.get('roles', [])
+        
+        return render_template('roles.html',
+                             user=current_user.user_data,
+                             roles=roles,
+                             title=f"Roles - {CONFIG['title']}")
+    
+    @app.route('/admin/menu')
+    @login_required
+    def menu_config():
+        if not current_user.has_role('admin'):
+            return redirect(url_for('dashboard'))
+        
+        # Get menu from auth module
+        result = call_auth_api('/api/v1/auth/menu', 'GET', {}, 
+                              headers={'Authorization': f'Bearer {session.get("user", {}).get("token", "")}'})
+        menu_items = result.get('items', [])
+        
+        return render_template('menu.html',
+                             user=current_user.user_data,
+                             menu_items=menu_items,
+                             title=f"Menu Configuration - {CONFIG['title']}")
+    
+    @app.route('/admin/settings')
+    @login_required
+    def settings():
+        if not current_user.has_role('admin'):
+            return redirect(url_for('dashboard'))
+        
+        return render_template('settings.html',
+                             user=current_user.user_data,
+                             config=CONFIG,
+                             title=f"Settings - {CONFIG['title']}")
+    
+    @app.route('/admin/logs')
+    @login_required
+    def logs():
+        if not current_user.has_role('admin'):
+            return redirect(url_for('dashboard'))
+        
+        return render_template('logs.html',
+                             user=current_user.user_data,
+                             title=f"Logs - {CONFIG['title']}")
+    
+    # API endpoints
+    @app.route('/api/v1/auth/login', methods=['POST'])
+    def api_login():
+        data = request.get_json()
+        username = data.get('username', '')
+        password = data.get('password', '')
+        
+        # Call auth module
+        result = call_auth_api('/api/v1/auth/login', 'POST', {
+            'username': username,
+            'password': password,
+            'platform': 'web'
+        })
+        
+        if result.get('status') == 'success':
+            # Create session
+            session['user'] = {
+                'user_id': result.get('user_id'),
+                'username': result.get('username'),
+                'roles': result.get('roles', []),
+                'token': result.get('token')
+            }
+            session['logged_in'] = True
+            
+            return jsonify({
+                'status': 'success',
+                'message': 'Login successful',
+                'user': {
+                    'user_id': result.get('user_id'),
+                    'username': result.get('username'),
+                    'roles': result.get('roles', [])
+                }
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': result.get('message', 'Invalid credentials')
+            }), 401
+    
+    @app.route('/api/v1/auth/status', methods=['GET'])
+    @login_required
+    def api_auth_status():
+        return jsonify({
+            'status': 'authenticated',
+            'user': current_user.user_data
+        })
+    
+    @app.route('/api/v1/auth/logout', methods=['POST'])
+    @login_required
+    def api_logout():
+        session.clear()
+        return jsonify({'status': 'success', 'message': 'Logged out'})
+    
+    @app.route('/api/v1/modules', methods=['GET'])
+    @login_required
+    def api_modules():
+        if not current_user.has_role('admin'):
+            return jsonify({'status': 'error', 'message': 'Insufficient permissions'}), 403
+        
+        result = call_core_api('/api/v1/modules')
+        return jsonify(result)
+    
+    @app.route('/api/v1/users', methods=['GET'])
+    @login_required
+    def api_users():
+        if not current_user.has_role('admin'):
+            return jsonify({'status': 'error', 'message': 'Insufficient permissions'}), 403
+        
+        result = call_auth_api('/api/v1/auth/users', 'GET')
+        return jsonify(result)
+    
+    @app.route('/api/v1/system/status', methods=['GET'])
+    @login_required
+    def api_system_status():
+        result = call_core_api('/api/v1/health')
+        return jsonify(result)
+    
+    # Health check endpoint
+    @app.route('/api/v1/health', methods=['GET'])
+    def api_health():
+        response = {
+            "status": "healthy",
+            "service": "web",
+            "version": MODULE_VERSION,
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        }
+        return jsonify(response)
+    
+    # Static files
+    @app.route('/static/<path:filename>')
+    def static_files(filename):
+        return app.send_static_file(filename)
+    
+    # Create templates directory and basic templates
+    def create_templates():
+        templates_dir = CONFIG["templates_dir"]
+        os.makedirs(templates_dir, exist_ok=True)
+        
+        # Base template
+        base_template = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ title }}{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <h1>{{ title }}</h1>
+        <nav>
+            {% if user and user.logged_in %}
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            {% if user.has_role('admin') %}
+            <a href="{{ url_for('modules_list') }}">Modules</a>
+            <a href="{{ url_for('users_list') }}">Users</a>
+            <a href="{{ url_for('roles_list') }}">Roles</a>
+            <a href="{{ url_for('menu_config') }}">Menu</a>
+            <a href="{{ url_for('settings') }}">Settings</a>
+            <a href="{{ url_for('logs') }}">Logs</a>
+            {% endif %}
+            <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+            <a href="{{ url_for('login') }}">Login</a>
+            {% endif %}
+        </nav>
+    </header>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    <footer>
+        <p>&copy; {{ owner }} - UniBot Administration Console</p>
+    </footer>
+</body>
+</html>'''
+        
+        login_template = '''{% extends "base.html" %}
+
+{% block title %}Login - {{ title }}{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <h2>Login</h2>
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+    <form method="POST" action="{{ url_for('login') }}">
+        <div class="form-group">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="remember" value="true"> Remember me
+            </label>
+        </div>
+        <button type="submit">Login</button>
+    </form>
+</div>
+{% endblock %}'''
+        
+        dashboard_template = '''{% extends "base.html" %}
+
+{% block title %}Dashboard - {{ title }}{% endblock %}
+
+{% block content %}
+<h2>Welcome, {{ user.username }}!</h2>
+<p>Roles: {{ ', '.join(user.roles) }}</p>
+
+<h3>System Health</h3>
+{% if health %}
+<div class="health-status">
+    <p>Status: <span class="status-{{ health.status }}">{{ health.status }}</span></p>
+    <p>Modules: {{ health.modules|length }}</p>
+    <p>Queue Size: {{ health.queue_size }}</p>
+    <p>Cache Size: {{ health.cache_size }}</p>
+</div>
+{% endif %}
+
+<h3>Connected Modules</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Version</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for module in modules %}
+        <tr>
+            <td>{{ module.name }}</td>
+            <td><span class="status-{{ module.status }}">{{ module.status }}</span></td>
+            <td>{{ module.version }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}'''
+        
+        modules_template = '''{% extends "base.html" %}
+
+{% block title %}Modules - {{ title }}{% endblock %}
+
+{% block content %}
+<h2>Connected Modules</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Version</th>
+            <th>Status</th>
+            <th>Endpoints</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for module in modules %}
+        <tr>
+            <td>{{ module.name }}</td>
+            <td>{{ module.version }}</td>
+            <td><span class="status-{{ module.status }}">{{ module.status }}</span></td>
+            <td>{{ module.endpoints|join(', ') }}</td>
+            <td><a href="{{ url_for('module_detail', module_name=module.name) }}">View</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}'''
+        
+        users_template = '''{% extends "base.html" %}
+
+{% block title %}Users - {{ title }}{% endblock %}
+
+{% block content %}
+<h2>Users</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Roles</th>
+            <th>Status</th>
+            <th>Last Login</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for user in users %}
+        <tr>
+            <td>{{ user.username }}</td>
+            <td>{{ user.email or '-' }}</td>
+            <td>{{ user.phone or '-' }}</td>
+            <td>{{ user.roles|join(', ') }}</td>
+            <td><span class="status-{{ user.status }}">{{ user.status }}</span></td>
+            <td>{{ user.last_login or 'Never' }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}'''
+        
+        # Write templates
+        with open(os.path.join(templates_dir, 'base.html'), 'w') as f:
+            f.write(base_template)
+        with open(os.path.join(templates_dir, 'login.html'), 'w') as f:
+            f.write(login_template)
+        with open(os.path.join(templates_dir, 'dashboard.html'), 'w') as f:
+            f.write(dashboard_template)
+        with open(os.path.join(templates_dir, 'modules.html'), 'w') as f:
+            f.write(modules_template)
+        with open(os.path.join(templates_dir, 'users.html'), 'w') as f:
+            f.write(users_template)
+        
+        # Create simple CSS
+        css = '''body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f5f5f5;
+}
+
+header {
+    background-color: #3498db;
+    color: white;
+    padding: 1rem;
+}
+
+header h1 {
+    margin: 0;
+}
+
+header nav {
+    margin-top: 1rem;
+}
+
+header nav a {
+    color: white;
+    margin-right: 1rem;
+    text-decoration: none;
+}
+
+header nav a:hover {
+    text-decoration: underline;
+}
+
+main {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+footer {
+    background-color: #3498db;
+    color: white;
+    padding: 1rem;
+    text-align: center;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+}
+
+table, th, td {
+    border: 1px solid #ddd;
+}
+
+th, td {
+    padding: 0.5rem;
+    text-align: left;
+}
+
+th {
+    background-color: #3498db;
+    color: white;
+}
+
+tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+.login-container {
+    max-width: 400px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.form-group {
+    margin: 1rem 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.5rem;
+    box-sizing: border-box;
+}
+
+button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #2980b9;
+}
+
+.error {
+    color: red;
+    margin: 1rem 0;
+}
+
+.status-healthy {
+    color: green;
+}
+
+.status-degraded {
+    color: orange;
+}
+
+.status-unhealthy {
+    color: red;
+}
+
+.status-active {
+    color: green;
+}
+
+.status-inactive {
+    color: orange;
+}
+
+.status-error {
+    color: red;
+}'''
+        
+        with open(os.path.join(CONFIG["static_dir"], 'style.css'), 'w') as f:
+            f.write(css)
+
+
+if USE_FLASK:
+    # Create templates before running
+    create_templates()
+    
+    def run_flask():
+        logger.info(f"Starting UniBot Web Module v{MODULE_VERSION}")
+        logger.info(f"Listening on {CONFIG['listen_address']}:{CONFIG['listen_port']}")
+        
+        if CONFIG["use_https"]:
+            # For HTTPS, we need SSL context
+            import ssl
+            ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+            ssl_context.load_cert_chain(CONFIG["ssl_cert"], CONFIG["ssl_key"])
+            app.run(
+                host=CONFIG["listen_address"],
+                port=CONFIG["listen_port"],
+                ssl_context=ssl_context
+            )
+        else:
+            app.run(
+                host=CONFIG["listen_address"],
+                port=CONFIG["listen_port"],
+                threaded=True
+            )
+
+
+# HTTP Server (fallback if Flask not available)
+class HTTPHandler(BaseHTTPRequestHandler):
+    """HTTP request handler for web module (fallback)"""
+    
+    def log_message(self, format, *args):
+        """Override to use our logger"""
+        logger.info(f"{self.address_string()} - {format % args}")
+    
+    def do_GET(self):
+        """Handle GET requests"""
+        parsed = urlparse(self.path)
+        path = parsed.path
+        
+        try:
+            # Health check
+            if path == "/api/v1/health":
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                response = {
+                    "status": "healthy",
+                    "service": "web",
+                    "version": MODULE_VERSION,
+                    "timestamp": datetime.utcnow().isoformat() + "Z"
+                }
+                self.wfile.write(json.dumps(response).encode())
+                return
+            
+            if path == "/admin" or path == "/admin/" or path == "/":
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html")
+                self.end_headers()
+                html = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>{CONFIG['title']}</title>
+                </head>
+                <body>
+                    <h1>{CONFIG['title']}</h1>
+                    <p>UniBot Web Module is running</p>
+                    <p>Flask is not available. Please install Flask for full functionality.</p>
+                </body>
+                </html>
+                """
+                self.wfile.write(html.encode())
+            
+            elif path == "/admin/login":
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html")
+                self.end_headers()
+                html = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Login - {CONFIG['title']}</title>
+                </head>
+                <body>
+                    <h1>Login</h1>
+                    <form method="POST" action="/admin/login">
+                        <label>Username: <input type="text" name="username"></label><br>
+                        <label>Password: <input type="password" name="password"></label><br>
+                        <button type="submit">Login</button>
+                    </form>
+                </body>
+                </html>
+                """
+                self.wfile.write(html.encode())
+            
+            elif path == "/api/v1/system/status":
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                response = {
+                    "status": "running",
+                    "module": MODULE_NAME,
+                    "version": MODULE_VERSION,
+                    "timestamp": datetime.utcnow().isoformat() + "Z"
+                }
+                self.wfile.write(json.dumps(response).encode())
+            
+            else:
+                self.send_error(404, "Not found")
+        
+        except Exception as e:
+            logger.error(f"Error handling GET {path}: {e}")
+            self.send_error(500, str(e))
+    
+    def do_POST(self):
+        """Handle POST requests"""
+        parsed = urlparse(self.path)
+        path = parsed.path
+        
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+            post_data = self.rfile.read(content_length)
+            
+            if path == "/admin/login":
+                self.send_response(302)
+                self.send_header("Location", "/admin")
+                self.end_headers()
+            
+            else:
+                self.send_error(404, "Not found")
+        
+        except Exception as e:
+            logger.error(f"Error handling POST {path}: {e}")
+            self.send_error(500, str(e))
+
+
+def run_http_server():
+    """Run HTTP server (fallback)"""
+    logger.info(f"Starting UniBot Web Module v{MODULE_VERSION} (HTTP mode)")
+    logger.info(f"Listening on {CONFIG['listen_address']}:{CONFIG['listen_port']}")
+    
+    server_address = (CONFIG["listen_address"], CONFIG["listen_port"])
+    httpd = HTTPServer(server_address, HTTPHandler)
+    
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        httpd.server_close()
+
+
+def main():
+    """Main entry point"""
+    import argparse
+    import signal
+    
+    parser = argparse.ArgumentParser(description="UniBot Web Module")
+    parser.add_argument("--port", type=int, default=CONFIG["listen_port"], help="Port to listen on")
+    parser.add_argument("--host", type=str, default=CONFIG["listen_address"], help="Host to listen on")
+    parser.add_argument("--config", type=str, help="Path to configuration file")
+    parser.add_argument("--https", action="store_true", help="Use HTTPS")
+    args = parser.parse_args()
+    
+    # Update config from args
+    CONFIG["listen_port"] = args.port
+    CONFIG["listen_address"] = args.host
+    CONFIG["use_https"] = args.https or CONFIG["use_https"]
+    
+    # Load configuration
+    load_config()
+    
+    # Setup signal handlers
+    def signal_handler(sig, frame):
+        logger.info("Shutting down gracefully...")
+        sys.exit(0)
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    if USE_FLASK:
+        run_flask()
+    else:
+        run_http_server()
+
+
+if __name__ == "__main__":
+    main()

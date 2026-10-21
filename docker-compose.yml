@@ -1,0 +1,281 @@
+version: '3.8'
+
+# UniBot Docker Compose Configuration
+# Version: 2026.10.21_1
+# This file orchestrates all UniBot modules using pre-built Docker images from Docker Hub
+
+services:
+  # Core Module - Central module that manages communication between all modules
+  core:
+    image: kramertheblack/unibot:core-2026.10.21_1
+    container_name: unibot-core
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - MODULE_NAME=core
+      - MODULE_VERSION=2026.10.21_1
+      - CORE_PORT=5000
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./secrets:/var/unibot/secrets:ro
+      - ./logs/core:/var/log/unibot
+    networks:
+      - unibot-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      - redis
+    
+  # Auth Module - Authentication and authorization
+  auth:
+    image: kramertheblack/unibot:auth-2026.10.21_1
+    container_name: unibot-auth
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      - MODULE_NAME=auth
+      - MODULE_VERSION=2026.10.21_1
+      - AUTH_PORT=5001
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./secrets:/var/unibot/secrets:ro
+      - ./logs/auth:/var/log/unibot
+    networks:
+      - unibot-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5001/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      - core
+      - redis
+    
+  # Datastore Module - Database and storage management
+  datastore:
+    image: kramertheblack/unibot:datastore-2026.10.21_1
+    container_name: unibot-datastore
+    restart: unless-stopped
+    ports:
+      - "5002:5002"
+    environment:
+      - MODULE_NAME=datastore
+      - MODULE_VERSION=2026.10.21_1
+      - DATASTORE_PORT=5002
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./secrets:/var/unibot/secrets:ro
+      - ./data:/var/unibot/data
+      - ./logs/datastore:/var/log/unibot
+    networks:
+      - unibot-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5002/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      - core
+      - postgres
+    
+  # MultiChat Module - Chat platform integration (VK, Telegram, MAX)
+  multichat:
+    image: kramertheblack/unibot:multichat-2026.10.21_1
+    container_name: unibot-multichat
+    restart: unless-stopped
+    ports:
+      - "5003:5003"
+    environment:
+      - MODULE_NAME=multichat
+      - MODULE_VERSION=2026.10.21_1
+      - MULTICHAT_PORT=5003
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./secrets:/var/unibot/secrets:ro
+      - ./logs/multichat:/var/log/unibot
+    networks:
+      - unibot-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5003/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      - core
+      - auth
+      - menu
+      - llm
+    
+  # LLM Module - AI/ML integration
+  llm:
+    image: kramertheblack/unibot:llm-2026.10.21_1
+    container_name: unibot-llm
+    restart: unless-stopped
+    ports:
+      - "5004:5004"
+    environment:
+      - MODULE_NAME=llm
+      - MODULE_VERSION=2026.10.21_1
+      - LLM_PORT=5004
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./secrets:/var/unibot/secrets:ro
+      - ./logs/llm:/var/log/unibot
+    networks:
+      - unibot-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5004/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      - core
+    
+  # Menu Module - Navigation and menu management
+  menu:
+    image: kramertheblack/unibot:menu-2026.10.21_1
+    container_name: unibot-menu
+    restart: unless-stopped
+    ports:
+      - "5005:5005"
+    environment:
+      - MODULE_NAME=menu
+      - MODULE_VERSION=2026.10.21_1
+      - MENU_PORT=5005
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./secrets:/var/unibot/secrets:ro
+      - ./logs/menu:/var/log/unibot
+      - ./config/menu:/app/config:ro
+    networks:
+      - unibot-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5005/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      - core
+    
+  # Apps Module - Dynamic functional module loader
+  apps:
+    image: kramertheblack/unibot:apps-2026.10.21_1
+    container_name: unibot-apps
+    restart: unless-stopped
+    ports:
+      - "5006:5006"
+    environment:
+      - MODULE_NAME=apps
+      - MODULE_VERSION=2026.10.21_1
+      - APPS_PORT=5006
+      - APPS_DIR=/app
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./secrets:/var/unibot/secrets:ro
+      - ./modules/apps:/app:ro
+      - ./logs/apps:/var/log/unibot
+    networks:
+      - unibot-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5006/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      - core
+    
+  # Web Module - Web administration console
+  web:
+    image: kramertheblack/unibot:web-2026.10.21_1
+    container_name: unibot-web
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - MODULE_NAME=web
+      - MODULE_VERSION=2026.10.21_1
+      - WEB_PORT=8080
+      - FLASK_ENV=production
+      - FLASK_APP=web.py
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./secrets:/var/unibot/secrets:ro
+      - ./logs/web:/var/log/unibot
+      - ./config/web/templates:/app/templates:ro
+      - ./config/web/static:/app/static:ro
+    networks:
+      - unibot-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      - core
+      - auth
+    
+  # PostgreSQL Database (optional, for persistent storage)
+  postgres:
+    image: postgres:15-alpine
+    container_name: unibot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: unibot
+      POSTGRES_PASSWORD: unibotpass
+      POSTGRES_DB: unibot
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - unibot-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U unibot -d unibot"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    
+  # Redis Cache (for session management and caching)
+  redis:
+    image: redis:7-alpine
+    container_name: unibot-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - ./data/redis:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - unibot-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# Create a custom network for all UniBot modules
+networks:
+  unibot-network:
+    driver: bridge
+    name: unibot-network
+
+# Named volumes for persistent data
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local

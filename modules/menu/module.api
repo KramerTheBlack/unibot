@@ -1,0 +1,444 @@
+# Menu Module API
+# Version: 2026.10.21_1
+
+## Menu Structure Endpoints
+
+### Get Full Menu
+GET /api/v1/menu
+Response: {
+  "menu": "object",  # Nested menu structure
+  "version": "string",
+  "updated_at": "timestamp",
+  "hash": "string"
+}
+
+### Get Menu for User
+GET /api/v1/menu/user
+Headers: Authorization: Bearer <token>
+Query params: platform=string
+Response: {
+  "menu": "object",
+  "current_path": ["array"],
+  "accessible_items": ["array"]
+}
+
+### Get Submenu
+GET /api/v1/menu/{path:.*}
+Query params: platform=string
+Response: {
+  "path": "string",
+  "menu": "object",
+  "title": "string",
+  "description": "string",
+  "items": [
+    {
+      "type": "command|menu|action|separator|back",
+      "text": "string",
+      "command": "string",
+      "path": "string",
+      "action": "string",
+      "module": "string",
+      "parameters": "object",
+      "access": {
+        "roles": ["array"],
+        "min_role": "string"
+      },
+      "platform": "all|vk|telegram|max",
+      "visible": "boolean"
+    }
+  ]
+}
+
+## Menu Management Endpoints
+
+### Create Menu Item
+POST /api/v1/menu
+Request: {
+  "path": "string",  # e.g., "/start", "/main/settings"
+  "text": "string",
+  "type": "command|menu|action",
+  "command": "string",  # For type=command
+  "action": "string",  # For type=action
+  "module": "string",  # For type=action
+  "parameters": "object",  # For type=action
+  "access": {
+    "roles": ["array"],
+    "min_role": "string"
+  },
+  "platform": "all|vk|telegram|max",
+  "description": "string",
+  "order": "number",
+  "parent": "string"
+}
+Response: {"status": "success|error", "path": "string", "message": "string"}
+
+### Update Menu Item
+PUT /api/v1/menu/{path:.*}
+Request: Same as create
+Response: {"status": "success|error", "message": "string"}
+
+### Delete Menu Item
+DELETE /api/v1/menu/{path:.*}
+Response: {"status": "success|error", "message": "string"}
+
+### Reorder Menu Items
+POST /api/v1/menu/reorder
+Request: {
+  "parent": "string",
+  "order": ["array"]  # Array of paths in new order
+}
+Response: {"status": "success|error", "message": "string"}
+
+## Navigation Endpoints
+
+### Navigate to Path
+POST /api/v1/menu/navigate
+Request: {
+  "user_id": "string",
+  "platform": "string",
+  "path": "string",
+  "from_path": "string"  # Optional: current path
+}
+Response: {
+  "status": "success|error",
+  "path": "string",
+  "menu": "object",
+  "history": ["array"],
+  "action": "object",
+  "error": "string"
+}
+
+### Go Back
+POST /api/v1/menu/back
+Request: {
+  "user_id": "string",
+  "platform": "string"
+}
+Response: {
+  "status": "success|error",
+  "path": "string",
+  "menu": "object",
+  "error": "string"
+}
+
+### Go to Main Menu
+POST /api/v1/menu/main
+Request: {
+  "user_id": "string",
+  "platform": "string"
+}
+Response: {
+  "status": "success|error",
+  "path": "string",
+  "menu": "object",
+  "error": "string"
+}
+
+### Get Current Position
+GET /api/v1/menu/position
+Query params: user_id=string, platform=string
+Response: {
+  "status": "success|error",
+  "path": "string",
+  "menu": "object",
+  "history": ["array"],
+  "error": "string"
+}
+
+### Get Navigation History
+GET /api/v1/menu/history
+Query params: user_id=string, platform=string
+Response: {
+  "status": "success|error",
+  "history": [
+    {
+      "path": "string",
+      "timestamp": "timestamp",
+      "from": "string",
+      "action": "string"
+    }
+  ],
+  "error": "string"
+}
+
+## Rendering Endpoints
+
+### Render Menu for Platform
+POST /api/v1/menu/render
+Request: {
+  "path": "string",
+  "platform": "vk|telegram|max",
+  "user_id": "string",
+  "chat_id": "string"
+}
+Response: {
+  "status": "success|error",
+  "platform": "string",
+  "keyboard": "object",  # Platform-specific keyboard format
+  "text": "string",  # Optional: accompanying text
+  "error": "string"
+}
+
+### Render Inline Keyboard
+POST /api/v1/menu/render/inline
+Request: Same as render
+Response: {
+  "status": "success|error",
+  "inline_keyboard": "array",  # Inline keyboard structure
+  "error": "string"
+}
+
+### Get Keyboard Markup
+POST /api/v1/menu/keyboard
+Request: {
+  "path": "string",
+  "platform": "vk|telegram|max",
+  "user_id": "string"
+}
+Response: {
+  "status": "success|error",
+  "markup": "object",  # Platform-specific markup
+  "type": "keyboard|inline_keyboard",
+  "error": "string"
+}
+
+## Command Processing Endpoints
+
+### Process User Input
+POST /api/v1/menu/process
+Request: {
+  "text": "string",
+  "user_id": "string",
+  "platform": "string",
+  "chat_id": "string",
+  "current_path": "string",
+  "state": "object"
+}
+Response: {
+  "status": "matched|not_matched|error",
+  "action": "navigate|command|none",
+  "path": "string",
+  "command": "string",
+  "module": "string",
+  "parameters": "object",
+  "response_text": "string",
+  "new_menu": "object",
+  "error": "string"
+}
+
+### Match Command
+POST /api/v1/menu/match
+Request: {
+  "text": "string",
+  "current_path": "string",
+  "user_roles": ["array"]
+}
+Response: {
+  "status": "success|error",
+  "matches": [
+    {
+      "path": "string",
+      "text": "string",
+      "type": "command|menu|action",
+      "command": "string",
+      "action": "string",
+      "score": "number",
+      "access_granted": "boolean"
+    }
+  ],
+  "best_match": "object",
+  "error": "string"
+}
+
+### Get Available Commands
+GET /api/v1/menu/commands
+Query params: user_id=string, platform=string, path=string
+Response: {
+  "status": "success|error",
+  "commands": [
+    {
+      "text": "string",
+      "command": "string",
+      "description": "string",
+      "path": "string",
+      "module": "string"
+    }
+  ],
+  "error": "string"
+}
+
+## Access Control Endpoints
+
+### Check Access to Path
+POST /api/v1/menu/access/check
+Request: {
+  "path": "string",
+  "user_id": "string",
+  "user_roles": ["array"]
+}
+Response: {
+  "status": "success|error",
+  "access_granted": "boolean",
+  "required_roles": ["array"],
+  "user_roles": ["array"],
+  "error": "string"
+}
+
+### Get Accessible Menu
+POST /api/v1/menu/access/filter
+Request: {
+  "user_id": "string",
+  "user_roles": ["array"],
+  "platform": "string"
+}
+Response: {
+  "status": "success|error",
+  "menu": "object",
+  "accessible_paths": ["array"],
+  "hidden_paths": ["array"],
+  "error": "string"
+}
+
+## Versioning Endpoints
+
+### Get Menu Version
+GET /api/v1/menu/version
+Response: {
+  "version": "string",
+  "updated_at": "timestamp",
+  "hash": "string"
+}
+
+### Update Menu Version
+POST /api/v1/menu/version
+Request: {"version": "string"}
+Response: {"status": "success|error", "message": "string"}
+
+## Import/Export Endpoints
+
+### Export Menu
+GET /api/v1/menu/export
+Response: File download (JSON)
+
+### Import Menu
+POST /api/v1/menu/import
+Request: Menu JSON
+Response: {"status": "success|error", "message": "string", "imported_paths": ["array"]}
+
+### Backup Menu
+POST /api/v1/menu/backup
+Response: {"status": "success|error", "backup_id": "string", "path": "string"}
+
+### Restore Menu
+POST /api/v1/menu/restore
+Request: {"backup_id": "string"}
+Response: {"status": "success|error", "message": "string"}
+
+## Statistics Endpoints
+
+### Get Menu Statistics
+GET /api/v1/menu/stats
+Response: {
+  "status": "success|error",
+  "statistics": {
+    "total_items": "number",
+    "by_type": {
+      "command": "number",
+      "menu": "number",
+      "action": "number",
+      "separator": "number"
+    },
+    "max_depth": "number",
+    "by_platform": "object"
+  },
+  "error": "string"
+}
+
+### Get Navigation Statistics
+GET /api/v1/menu/stats/navigation
+Response: {
+  "status": "success|error",
+  "navigation": {
+    "total_navigations": "number",
+    "by_path": "object",
+    "most_visited": [
+      {"path": "string", "count": "number"}
+    ]
+  },
+  "error": "string"
+}
+
+## Health Endpoints
+
+### Health Check
+GET /api/v1/health
+Response: {
+  "status": "healthy|degraded|unhealthy",
+  "loaded": "boolean",
+  "menu_items": "number",
+  "active_users": "number",
+  "error_rate": "number",
+  "timestamp": "timestamp"
+}
+
+## Data Models
+
+### Menu Item
+{
+  "path": "/start",
+  "text": "Начать",
+  "type": "command|menu|action|separator|back",
+  "description": "Описание",
+  "command": "/start",  // For type=command
+  "action": "module_function",  // For type=action
+  "module": "module_name",  // For type=action
+  "parameters": {"key": "value"},  // For type=action
+  "children": {"submenu": {...}},  // For type=menu
+  "access": {
+    "roles": ["admin", "customer"],
+    "min_role": "admin"
+  },
+  "platform": "all|vk|telegram|max",
+  "order": 100,
+  "visible": true,
+  "icon": "icon_name",
+  "color": "hex_color"
+}
+
+### Keyboard Button
+{
+  "text": "string",
+  "type": "text|callback|url|command|action",
+  "callback_data": "string",
+  "url": "string",
+  "command": "string",
+  "action": "string",
+  "module": "string",
+  "parameters": "object",
+  "color": "string",
+  "emoji": "string"
+}
+
+### Navigation History Item
+{
+  "path": "/main",
+  "timestamp": "timestamp",
+  "from": "/start",
+  "action": "navigate|command|back",
+  "user_id": "string",
+  "platform": "string"
+}
+
+## Error Codes
+- 100: Menu not found
+- 101: Path not found
+- 102: Invalid path format
+- 103: Maximum depth exceeded
+- 104: Circular reference
+- 105: Path already exists
+- 200: Invalid request data
+- 201: Access denied
+- 202: Platform not supported
+- 300: Rendering error
+- 301: No matching command
+- 302: Action execution failed

@@ -1,0 +1,34 @@
+name: menu
+version: 2026.10.21_1
+type: system
+required: true
+description: Menu module for UniBot. Manages navigation structure, commands, buttons for chat interfaces.
+author: UniBot Team
+license: MIT
+
+parameters:
+  menu_file: menu.json
+  max_depth: 5
+  max_buttons_per_row: 3
+  button_text_length_limit: 20
+  
+interfaces:
+  - name: menu_management
+    type: api
+    description: CRUD operations for menu structure
+  - name: navigation
+    type: api
+    description: Handle user navigation through menu
+  - name: rendering
+    type: api
+    description: Render menu for different platforms
+  - name: command_mapping
+    type: api
+    description: Map user input to menu commands
+  - name: state_tracking
+    type: internal
+    description: Track user position in menu hierarchy
+
+dependencies:
+  - core
+  - auth

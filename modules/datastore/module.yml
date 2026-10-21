@@ -1,0 +1,34 @@
+name: datastore
+version: 2026.10.21_1
+type: system
+required: true
+description: Datastore module for UniBot. Provides interface for connecting to various databases and data storage systems.
+author: UniBot Team
+license: MIT
+
+parameters:
+  supported_types:
+    - sqlite
+    - postgresql
+    - mysql
+    - mssql
+    - file
+    - redis
+    - mongodb
+
+interfaces:
+  - name: database_management
+    type: api
+    description: CRUD operations for database connections
+  - name: data_operations
+    type: api
+    description: Read/write operations on connected databases
+  - name: schema_management
+    type: api
+    description: Database schema creation and migration
+  - name: backup
+    type: api
+    description: Database backup and restore
+
+dependencies:
+  - core

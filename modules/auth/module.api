@@ -1,0 +1,279 @@
+# Auth Module API
+# Version: 2026.10.21_1
+
+## Authentication Endpoints
+
+### User Login
+POST /api/v1/auth/login
+Request: {"username": "string", "password": "string", "platform": "web|vk|telegram|max"}
+Response: {
+  "status": "success|error",
+  "token": "string",
+  "user_id": "string",
+  "username": "string", 
+  "roles": ["array"],
+  "expires_in": "number",
+  "message": "string"
+}
+Error codes: 100 (Invalid credentials), 101 (Account locked), 102 (Account disabled)
+
+### User Logout
+POST /api/v1/auth/logout
+Headers: Authorization: Bearer <token>
+Response: {"status": "success|error", "message": "string"}
+
+### Session Validation
+GET /api/v1/auth/session
+Headers: Authorization: Bearer <token>
+Response: {
+  "status": "valid|invalid|expired",
+  "user_id": "string",
+  "username": "string",
+  "roles": ["array"],
+  "expires_at": "timestamp"
+}
+
+## Registration Endpoints
+
+### Register New User
+POST /api/v1/auth/register
+Request: {
+  "phone": "string",
+  "password": "string",
+  "email": "string",
+  "first_name": "string",
+  "last_name": "string",
+  "agree_terms": "boolean",
+  "platform": "web|vk|telegram|max"
+}
+Response: {
+  "status": "success|error",
+  "user_id": "string",
+  "message": "string"
+}
+Error codes: 200 (Registration disabled), 201 (Invalid data), 202 (Username exists), 203 (Phone exists)
+
+### Verify Phone Number
+POST /api/v1/auth/verify-phone
+Request: {"phone": "string", "code": "string"}
+Response: {
+  "status": "success|error",
+  "verified": "boolean",
+  "message": "string"
+}
+
+### Resend Verification Code
+POST /api/v1/auth/resend-code
+Request: {"phone": "string"}
+Response: {
+  "status": "success|error",
+  "message": "string",
+  "retry_after": "number"
+}
+
+## User Management Endpoints
+
+### Get User List
+GET /api/v1/auth/users
+Headers: Authorization: Bearer <admin_token>
+Query params: page=number, limit=number, role=string
+Response: {
+  "users": [
+    {
+      "user_id": "string",
+      "username": "string",
+      "phone": "string",
+      "email": "string",
+      "first_name": "string",
+      "last_name": "string",
+      "roles": ["array"],
+      "status": "active|disabled|locked",
+      "created_at": "timestamp",
+      "last_login": "timestamp"
+    }
+  ],
+  "total": "number",
+  "page": "number",
+  "limit": "number"
+}
+
+### Get User Details
+GET /api/v1/auth/users/{user_id}
+Headers: Authorization: Bearer <admin_token>
+Response: {
+  "user_id": "string",
+  "username": "string",
+  "phone": "string",
+  "email": "string",
+  "first_name": "string",
+  "last_name": "string",
+  "roles": ["array"],
+  "status": "active|disabled|locked",
+  "created_at": "timestamp",
+  "last_login": "timestamp",
+  "chat_platforms": [{"platform": "string", "user_id": "string", "username": "string"}]
+}
+
+### Update User
+PUT /api/v1/auth/users/{user_id}
+Headers: Authorization: Bearer <admin_token>
+Request: {
+  "username": "string",
+  "phone": "string", 
+  "email": "string",
+  "first_name": "string",
+  "last_name": "string",
+  "roles": ["array"],
+  "status": "active|disabled"
+}
+Response: {"status": "success|error", "message": "string"}
+
+### Delete User
+DELETE /api/v1/auth/users/{user_id}
+Headers: Authorization: Bearer <admin_token>
+Response: {"status": "success|error", "message": "string"}
+
+## Role and Group Management Endpoints
+
+### Get Roles List
+GET /api/v1/auth/roles
+Headers: Authorization: Bearer <admin_token>
+Response: {
+  "roles": [
+    {
+      "role_id": "string",
+      "name": "string",
+      "description": "string",
+      "permissions": ["array"]
+    }
+  ]
+}
+
+### Create Role
+POST /api/v1/auth/roles
+Headers: Authorization: Bearer <admin_token>
+Request: {
+  "name": "string",
+  "description": "string",
+  "permissions": ["array"]
+}
+Response: {"status": "success|error", "role_id": "string", "message": "string"}
+
+### Assign Role to User
+POST /api/v1/auth/users/{user_id}/roles
+Headers: Authorization: Bearer <admin_token>
+Request: {"roles": ["array"]}
+Response: {"status": "success|error", "message": "string"}
+
+## Authorization Check Endpoints
+
+### Check Permission
+POST /api/v1/auth/check-permission
+Headers: Authorization: Bearer <token>
+Request: {"permission": "string", "resource": "string"}
+Response: {"status": "success|error", "allowed": "boolean", "message": "string"}
+
+### Get User Permissions
+GET /api/v1/auth/permissions
+Headers: Authorization: Bearer <token>
+Response: {
+  "status": "success|error",
+  "permissions": ["array"]
+}
+
+## Integration Endpoints
+
+### Menu Integration - Register Menu Items
+POST /api/v1/auth/menu/register
+Headers: Authorization: Bearer <admin_token>
+Request: {
+  "items": [
+    {
+      "type": "button|command",
+      "label": "string",
+      "command": "string",
+      "visible_for_roles": ["array"],
+      "platform": "all|web|vk|telegram|max"
+    }
+  ]
+}
+Response: {"status": "success|error", "message": "string"}
+
+### Get Menu Items for User
+GET /api/v1/auth/menu
+Headers: Authorization: Bearer <token>
+Response: {
+  "status": "success|error",
+  "items": ["array"]
+}
+
+## Web Console Specific
+
+### Web Login (Session based)
+POST /api/v1/auth/web/login
+Request: {"username": "string", "password": "string"}
+Response: {"status": "success|error", "session_id": "string", "user": "object"}
+
+### Web Session Check
+GET /api/v1/auth/web/session
+Headers: Cookie: session_id=string
+Response: {"status": "valid|invalid", "user": "object"}
+
+## Data Models
+
+### User Object
+{
+  "user_id": "uuid",
+  "username": "string",
+  "phone": "string",
+  "email": "string",
+  "first_name": "string", 
+  "last_name": "string",
+  "password_hash": "string",
+  "salt": "string",
+  "roles": ["admin", "customer", "anonymous"],
+  "status": "active|disabled|locked",
+  "chat_platforms": [
+    {
+      "platform": "vk|telegram|max",
+      "platform_user_id": "string",
+      "platform_username": "string",
+      "access_token": "string",
+      "refresh_token": "string"
+    }
+  ],
+  "created_at": "ISO8601",
+  "updated_at": "ISO8601",
+  "last_login": "ISO8601"
+}
+
+### Session Object
+{
+  "session_id": "uuid",
+  "user_id": "uuid",
+  "token": "string",
+  "expires_at": "ISO8601",
+  "created_at": "ISO8601",
+  "platform": "web|vk|telegram|max",
+  "ip_address": "string",
+  "user_agent": "string"
+}
+
+## Role Definitions
+- **anonymous**: No history, no personal data storage
+- **customer**: Can use bot functions, has persistent history
+- **admin**: Full access, can configure bot and modules
+
+## Permission Definitions
+- auth:login
+- auth:register
+- auth:manage_users
+- auth:manage_roles
+- auth:view_logs
+- core:manage_modules
+- web:access_admin
+- menu:configure
+- llm:configure
+- multichat:configure
+- datastore:configure
+- apps:manage

@@ -1,0 +1,327 @@
+# Web Module API
+# Version: 2026.10.21_1
+
+## Web Routes
+
+### Main Pages
+
+GET /
+Redirects to /admin
+
+GET /admin
+Main administration dashboard (requires admin authentication)
+Response: HTML page with dashboard
+
+GET /admin/login
+Login page for web console
+Response: HTML page with login form
+
+GET /admin/logout
+Logout from web console
+Response: Redirect to /admin/login
+
+### Dashboard Pages
+
+GET /admin/dashboard
+Main dashboard with bot statistics and status
+Response: HTML page
+
+GET /admin/modules
+List of all connected modules with status
+Response: HTML page
+
+GET /admin/modules/{module_name}
+Configuration page for specific module
+Response: HTML page
+
+GET /admin/users
+User management page
+Response: HTML page
+
+GET /admin/users/{user_id}
+Edit user page
+Response: HTML page
+
+GET /admin/roles
+Role management page
+Response: HTML page
+
+GET /admin/menu
+Menu configuration page
+Response: HTML page
+
+GET /admin/llm
+LLM configuration page
+Response: HTML page
+
+GET /admin/multichat
+Multi-chat configuration page
+Response: HTML page
+
+GET /admin/datastore
+Datastore configuration page
+Response: HTML page
+
+GET /admin/apps
+Apps management page
+Response: HTML page
+
+GET /admin/settings
+Global settings page
+Response: HTML page
+
+GET /admin/logs
+System logs viewer
+Response: HTML page
+
+## API Endpoints
+
+### Authentication
+
+POST /api/v1/auth/login
+Request: {"username": "string", "password": "string", "remember_me": "boolean"}
+Response: {"status": "success|error", "message": "string"}
+
+GET /api/v1/auth/status
+Headers: Cookie: session_id=string
+Response: {"status": "authenticated|unauthenticated", "user": "object"}
+
+POST /api/v1/auth/logout
+Headers: Cookie: session_id=string
+Response: {"status": "success|error", "message": "string"}
+
+### Modules Management
+
+GET /api/v1/modules
+Headers: Cookie: session_id=string
+Response: {
+  "modules": [
+    {
+      "name": "string",
+      "version": "string",
+      "status": "active|inactive|error",
+      "endpoints": ["array"],
+      "health": "object"
+    }
+  ]
+}
+
+POST /api/v1/modules/{module_name}/start
+Headers: Cookie: session_id=string
+Response: {"status": "success|error", "message": "string"}
+
+POST /api/v1/modules/{module_name}/stop
+Headers: Cookie: session_id=string
+Response: {"status": "success|error", "message": "string"}
+
+POST /api/v1/modules/{module_name}/restart
+Headers: Cookie: session_id=string
+Response: {"status": "success|error", "message": "string"}
+
+GET /api/v1/modules/{module_name}/config
+Headers: Cookie: session_id=string
+Response: {"config": "object"}
+
+POST /api/v1/modules/{module_name}/config
+Headers: Cookie: session_id=string
+Request: {"config": "object"}
+Response: {"status": "success|error", "message": "string"}
+
+### User Management
+
+GET /api/v1/users
+Headers: Cookie: session_id=string
+Query params: page=number, limit=number, search=string
+Response: {
+  "users": ["array"],
+  "total": "number",
+  "page": "number",
+  "limit": "number"
+}
+
+GET /api/v1/users/{user_id}
+Headers: Cookie: session_id=string
+Response: {"user": "object"}
+
+POST /api/v1/users
+Headers: Cookie: session_id=string
+Request: {"username": "string", "password": "string", "email": "string", "first_name": "string", "last_name": "string", "phone": "string", "roles": ["array"]}
+Response: {"status": "success|error", "user_id": "string", "message": "string"}
+
+PUT /api/v1/users/{user_id}
+Headers: Cookie: session_id=string
+Request: {"username": "string", "email": "string", "first_name": "string", "last_name": "string", "phone": "string", "roles": ["array"], "status": "active|disabled"}
+Response: {"status": "success|error", "message": "string"}
+
+DELETE /api/v1/users/{user_id}
+Headers: Cookie: session_id=string
+Response: {"status": "success|error", "message": "string"}
+
+### Role Management
+
+GET /api/v1/roles
+Headers: Cookie: session_id=string
+Response: {"roles": ["array"]}
+
+POST /api/v1/roles
+Headers: Cookie: session_id=string
+Request: {"name": "string", "description": "string", "permissions": ["array"]}
+Response: {"status": "success|error", "role_id": "string", "message": "string"}
+
+PUT /api/v1/roles/{role_id}
+Headers: Cookie: session_id=string
+Request: {"name": "string", "description": "string", "permissions": ["array"]}
+Response: {"status": "success|error", "message": "string"}
+
+DELETE /api/v1/roles/{role_id}
+Headers: Cookie: session_id=string
+Response: {"status": "success|error", "message": "string"}
+
+### Menu Configuration
+
+GET /api/v1/menu
+Headers: Cookie: session_id=string
+Response: {"menu": "object"}
+
+POST /api/v1/menu
+Headers: Cookie: session_id=string
+Request: {"menu": "object"}
+Response: {"status": "success|error", "message": "string"}
+
+### LLM Configuration
+
+GET /api/v1/llm/config
+Headers: Cookie: session_id=string
+Response: {"config": "object"}
+
+POST /api/v1/llm/config
+Headers: Cookie: session_id=string
+Request: {"api_url": "string", "api_key": "string", "model": "string", "temperature": "number", "max_tokens": "number", "prompt_template": "string"}
+Response: {"status": "success|error", "message": "string"}
+
+### Multi-chat Configuration
+
+GET /api/v1/multichat/config
+Headers: Cookie: session_id=string
+Response: {
+  "platforms": {
+    "vk": {"enabled": "boolean", "token": "string", "config": "object"},
+    "telegram": {"enabled": "boolean", "token": "string", "config": "object"},
+    "max": {"enabled": "boolean", "token": "string", "config": "object"}
+  }
+}
+
+POST /api/v1/multichat/config/{platform}
+Headers: Cookie: session_id=string
+Request: {"enabled": "boolean", "token": "string", "config": "object"}
+Response: {"status": "success|error", "message": "string"}
+
+### Datastore Configuration
+
+GET /api/v1/datastore/config
+Headers: Cookie: session_id=string
+Response: {
+  "datastores": [
+    {
+      "name": "string",
+      "type": "string",
+      "connection_string": "string",
+      "config": "object"
+    }
+  ]
+}
+
+POST /api/v1/datastore/config
+Headers: Cookie: session_id=string
+Request: {"datastores": ["array"]}
+Response: {"status": "success|error", "message": "string"}
+
+### Apps Management
+
+GET /api/v1/apps
+Headers: Cookie: session_id=string
+Response: {
+  "apps": [
+    {
+      "name": "string",
+      "version": "string",
+      "status": "active|inactive",
+      "config": "object"
+    }
+  ]
+}
+
+POST /api/v1/apps/{app_name}/enable
+Headers: Cookie: session_id=string
+Response: {"status": "success|error", "message": "string"}
+
+POST /api/v1/apps/{app_name}/disable
+Headers: Cookie: session_id=string
+Response: {"status": "success|error", "message": "string"}
+
+POST /api/v1/apps/{app_name}/config
+Headers: Cookie: session_id=string
+Request: {"config": "object"}
+Response: {"status": "success|error", "message": "string"}
+
+### System Status
+
+GET /api/v1/system/status
+Headers: Cookie: session_id=string
+Response: {
+  "status": "healthy|degraded|unhealthy",
+  "modules": ["array"],
+  "uptime": "number",
+  "memory_usage": "object",
+  "cpu_usage": "number",
+  "queue_size": "number"
+}
+
+GET /api/v1/system/metrics
+Headers: Cookie: session_id=string
+Response: {"metrics": "object"}
+
+GET /api/v1/system/logs
+Headers: Cookie: session_id=string
+Query params: level=string, module=string, limit=number
+Response: {"logs": ["array"]}
+
+### Settings
+
+GET /api/v1/settings
+Headers: Cookie: session_id=string
+Response: {"settings": "object"}
+
+POST /api/v1/settings
+Headers: Cookie: session_id=string
+Request: {"settings": "object"}
+Response: {"status": "success|error", "message": "string"}
+
+### Static Files
+
+GET /static/*
+Serves static files (CSS, JS, images)
+
+## Webhook Endpoints (for module communication)
+
+POST /api/v1/webhook/core
+Receives notifications from core module
+Request: {"event": "string", "data": "object"}
+Response: {"status": "success|error"}
+
+POST /api/v1/webhook/auth
+Receives authentication events
+Request: {"event": "string", "user_id": "string", "data": "object"}
+Response: {"status": "success|error"}
+
+## Error Codes
+- 100: Invalid credentials
+- 101: Session expired
+- 102: Insufficient permissions
+- 200: Invalid request data
+- 201: Resource not found
+- 202: Resource already exists
+- 300: Module not found
+- 301: Module not registered
+- 302: Module error
+- 400: Internal error

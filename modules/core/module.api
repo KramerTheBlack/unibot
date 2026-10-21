@@ -1,0 +1,77 @@
+# Core Module API
+# Version: 2026.10.21_1
+
+## Endpoints
+
+### Module Registration
+POST /api/v1/modules/register
+Request: {"module_name": "string", "version": "string", "endpoints": "array"}
+Response: {"status": "success|error", "module_id": "string", "message": "string"}
+
+### Module Discovery
+GET /api/v1/modules
+Response: {"modules": [{"name": "string", "version": "string", "status": "active|inactive|error", "endpoints": "array"}]}
+
+### Module Status
+GET /api/v1/modules/{module_name}/status
+Response: {"status": "active|inactive|error", "last_ping": "timestamp", "uptime": "number"}
+
+### Send Message to Module
+POST /api/v1/modules/{module_name}/message
+Request: {"command": "string", "parameters": "object", "request_id": "string", "timeout": "number"}
+Response: {"status": "sent|delivered|error", "response": "object", "request_id": "string"}
+
+### Async Message Queue
+POST /api/v1/queue/send
+Request: {"module_name": "string", "command": "string", "parameters": "object", "priority": "low|normal|high"}
+Response: {"queue_id": "string", "status": "queued"}
+
+GET /api/v1/queue/{queue_id}/status
+Response: {"status": "queued|processing|completed|error", "result": "object", "timestamp": "timestamp"}
+
+### Cache Operations
+POST /api/v1/cache/set
+Request: {"key": "string", "value": "object", "ttl": "number"}
+Response: {"status": "success|error", "message": "string"}
+
+GET /api/v1/cache/get/{key}
+Response: {"status": "found|not_found", "value": "object"}
+
+DELETE /api/v1/cache/delete/{key}
+Response: {"status": "success|error", "message": "string"}
+
+### Health Check
+GET /api/v1/health
+Response: {"status": "healthy|degraded|unhealthy", "modules": "array", "queue_size": "number", "cache_size": "number"}
+
+### Logging
+POST /api/v1/log
+Request: {"level": "DEBUG|INFO|WARNING|ERROR|CRITICAL", "module": "string", "message": "string", "context": "object"}
+Response: {"status": "success|error", "log_id": "string"}
+
+### Metrics
+GET /api/v1/metrics
+Response: {"queue_metrics": "object", "cache_metrics": "object", "module_metrics": "object"}
+
+## Message Format
+All messages between modules have the following structure:
+{
+  "from": "module_name",
+  "to": "module_name",
+  "command": "string",
+  "parameters": "object",
+  "request_id": "uuid",
+  "timestamp": "ISO8601",
+  "priority": "low|normal|high",
+  "retry_count": "number"
+}
+
+## Error Codes
+- 1000: Module not found
+- 1001: Module not registered
+- 1002: Module unavailable
+- 1003: Invalid message format
+- 1004: Queue overflow
+- 1005: Timeout
+- 1006: Cache error
+- 2000: Internal server error

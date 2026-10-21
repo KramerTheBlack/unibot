@@ -1,0 +1,613 @@
+# LLM Module API
+# Version: 2026.10.21_1
+
+## Text Generation Endpoints
+
+### Generate Text
+POST /api/v1/generate
+Request: {
+  "prompt": "string",
+  "system_prompt": "string",
+  "model": "string",
+  "provider": "string",
+  "max_tokens": "number",
+  "temperature": "number",
+  "top_p": "number",
+  "frequency_penalty": "number",
+  "presence_penalty": "number",
+  "stop": "string|array",
+  "user": "string",
+  "context": "object",
+  "stream": "boolean"
+}
+Response: {
+  "status": "success|error",
+  "text": "string",
+  "model": "string",
+  "provider": "string",
+  "usage": {
+    "prompt_tokens": "number",
+    "completion_tokens": "number",
+    "total_tokens": "number"
+  },
+  "latency": "number",
+  "finish_reason": "stop|length|error",
+  "error": "string"
+}
+
+### Stream Generation (SSE)
+GET /api/v1/generate/stream
+Query params: prompt, model, max_tokens, temperature, etc.
+Response: Server-Sent Events stream of tokens
+
+### Chat Completion
+POST /api/v1/chat
+Request: {
+  "messages": [
+    {
+      "role": "system|user|assistant",
+      "content": "string",
+      "name": "string"
+    }
+  ],
+  "model": "string",
+  "provider": "string",
+  "max_tokens": "number",
+  "temperature": "number",
+  "top_p": "number",
+  "frequency_penalty": "number",
+  "presence_penalty": "number",
+  "stop": "string|array",
+  "user": "string",
+  "stream": "boolean"
+}
+Response: {
+  "status": "success|error",
+  "message": {
+    "role": "assistant",
+    "content": "string",
+    "finish_reason": "stop|length|error"
+  },
+  "model": "string",
+  "usage": {
+    "prompt_tokens": "number",
+    "completion_tokens": "number",
+    "total_tokens": "number"
+  },
+  "latency": "number",
+  "error": "string"
+}
+
+## Text Analysis Endpoints
+
+### Analyze Intent
+POST /api/v1/analyze/intent
+Request: {
+  "text": "string",
+  "context": "string",
+  "model": "string",
+  "intents": ["array"]  # Optional: predefined intents to match
+}
+Response: {
+  "status": "success|error",
+  "intent": "string",
+  "confidence": "number",
+  "entities": [
+    {
+      "name": "string",
+      "value": "string",
+      "type": "string",
+      "confidence": "number"
+    }
+  ],
+  "classification": "object",
+  "error": "string"
+}
+
+### Extract Information
+POST /api/v1/analyze/extract
+Request: {
+  "text": "string",
+  "schema": "object",  # JSON schema of expected data
+  "model": "string",
+  "example": "string"  # Example of expected output
+}
+Response: {
+  "status": "success|error",
+  "data": "object",
+  "confidence": "object",
+  "missing_fields": ["array"],
+  "error": "string"
+}
+
+### Summarize Text
+POST /api/v1/analyze/summarize
+Request: {
+  "text": "string",
+  "length": "short|medium|long|number",
+  "model": "string",
+  "focus": "string"  # What to focus on in summary
+}
+Response: {
+  "status": "success|error",
+  "summary": "string",
+  "original_length": "number",
+  "summary_length": "number",
+  "ratio": "number",
+  "error": "string"
+}
+
+### Translate Text
+POST /api/v1/analyze/translate
+Request: {
+  "text": "string",
+  "source_language": "string",
+  "target_language": "string",
+  "model": "string",
+  "context": "string"
+}
+Response: {
+  "status": "success|error",
+  "translation": "string",
+  "source_language": "string",
+  "target_language": "string",
+  "confidence": "number",
+  "error": "string"
+}
+
+### Sentiment Analysis
+POST /api/v1/analyze/sentiment
+Request: {
+  "text": "string",
+  "model": "string"
+}
+Response: {
+  "status": "success|error",
+  "sentiment": "positive|neutral|negative",
+  "score": "number",  # -1 to 1 scale
+  "confidence": "number",
+  "error": "string"
+}
+
+### Classify Text
+POST /api/v1/analyze/classify
+Request: {
+  "text": "string",
+  "categories": ["array"],
+  "model": "string"
+}
+Response: {
+  "status": "success|error",
+  "category": "string",
+  "probabilities": "object",
+  "error": "string"
+}
+
+## Embedding Endpoints
+
+### Create Embedding
+POST /api/v1/embeddings
+Request: {
+  "text": "string|array",
+  "model": "string",
+  "provider": "string",
+  "user": "string"
+}
+Response: {
+  "status": "success|error",
+  "embeddings": [
+    {
+      "index": "number",
+      "embedding": ["array"],
+      "object": "string"
+    }
+  ],
+  "model": "string",
+  "usage": {
+    "prompt_tokens": "number",
+    "total_tokens": "number"
+  },
+  "error": "string"
+}
+
+### Compare Texts
+POST /api/v1/embeddings/compare
+Request: {
+  "text_a": "string",
+  "text_b": "string",
+  "model": "string"
+}
+Response: {
+  "status": "success|error",
+  "similarity": "number",  # Cosine similarity (0-1)
+  "distance": "number",  # Cosine distance (0-2)
+  "error": "string"
+}
+
+### Semantic Search
+POST /api/v1/embeddings/search
+Request: {
+  "query": "string",
+  "documents": ["array"],
+  "model": "string",
+  "top_k": "number"
+}
+Response: {
+  "status": "success|error",
+  "results": [
+    {
+      "document": "string",
+      "index": "number",
+      "similarity": "number"
+    }
+  ],
+  "error": "string"
+}
+
+## Moderation Endpoints
+
+### Moderate Content
+POST /api/v1/moderate
+Request: {
+  "text": "string",
+  "model": "string",
+  "categories": ["array"]  # Optional: specific categories to check
+}
+Response: {
+  "status": "success|error",
+  "safe": "boolean",
+  "flagged": "boolean",
+  "categories": {
+    "hate": {"flagged": "boolean", "score": "number"},
+    "harassment": {"flagged": "boolean", "score": "number"},
+    "self_harm": {"flagged": "boolean", "score": "number"},
+    "sexual": {"flagged": "boolean", "score": "number"},
+    "sexual_minors": {"flagged": "boolean", "score": "number"},
+    "violence": {"flagged": "boolean", "score": "number"},
+    "violence_graphic": {"flagged": "boolean", "score": "number"}
+  },
+  "recommendation": "allow|warn|block",
+  "explanation": "string",
+  "error": "string"
+}
+
+### Sanitize Text
+POST /api/v1/moderate/sanitize
+Request: {
+  "text": "string",
+  "level": "low|medium|high"
+}
+Response: {
+  "status": "success|error",
+  "sanitized_text": "string",
+  "removed": ["array"],
+  "replacements": "object",
+  "error": "string"
+}
+
+## Model Management Endpoints
+
+### List Models
+GET /api/v1/models
+Response: {
+  "models": [
+    {
+      "id": "string",
+      "name": "string",
+      "provider": "string",
+      "description": "string",
+      "max_tokens": "number",
+      "pricing": {
+        "prompt": "number",
+        "completion": "number"
+      },
+      "supported": "boolean",
+      "default": "boolean"
+    }
+  ],
+  "timestamp": "timestamp"
+}
+
+### Get Model Info
+GET /api/v1/models/{model_id}
+Response: {
+  "id": "string",
+  "name": "string",
+  "provider": "string",
+  "description": "string",
+  "capabilities": ["array"],
+  "limitations": ["array"],
+  "pricing": "object",
+  "supported": "boolean",
+  "default": "boolean"
+}
+
+### Add Custom Model
+POST /api/v1/models
+Request: {
+  "id": "string",
+  "name": "string",
+  "provider": "string",
+  "api_url": "string",
+  "api_key": "string",
+  "description": "string",
+  "capabilities": ["array"]
+}
+Response: {"status": "success|error", "model_id": "string", "message": "string"}
+
+### Update Model
+PUT /api/v1/models/{model_id}
+Request: {
+  "name": "string",
+  "api_url": "string",
+  "api_key": "string",
+  "description": "string"
+}
+Response: {"status": "success|error", "message": "string"}
+
+### Delete Model
+DELETE /api/v1/models/{model_id}
+Response: {"status": "success|error", "message": "string"}
+
+## Prompt Management Endpoints
+
+### List Prompts
+GET /api/v1/prompts
+Response: {
+  "prompts": [
+    {
+      "prompt_id": "string",
+      "name": "string",
+      "template": "string",
+      "description": "string",
+      "variables": ["array"],
+      "created_at": "timestamp",
+      "updated_at": "timestamp"
+    }
+  ]
+}
+
+### Add Prompt
+POST /api/v1/prompts
+Request: {
+  "name": "string",
+  "template": "string",
+  "description": "string",
+  "variables": ["array"]
+}
+Response: {
+  "status": "success|error",
+  "prompt_id": "string",
+  "message": "string"
+}
+
+### Get Prompt
+GET /api/v1/prompts/{prompt_id}
+Response: {
+  "prompt_id": "string",
+  "name": "string",
+  "template": "string",
+  "description": "string",
+  "variables": ["array"],
+  "created_at": "timestamp",
+  "updated_at": "timestamp"
+}
+
+### Update Prompt
+PUT /api/v1/prompts/{prompt_id}
+Request: {
+  "name": "string",
+  "template": "string",
+  "description": "string",
+  "variables": ["array"]
+}
+Response: {"status": "success|error", "message": "string"}
+
+### Delete Prompt
+DELETE /api/v1/prompts/{prompt_id}
+Response: {"status": "success|error", "message": "string"}
+
+### Render Prompt
+POST /api/v1/prompts/{prompt_id}/render
+Request: {"variables": "object"}
+Response: {
+  "status": "success|error",
+  "prompt": "string",
+  "variables": "object",
+  "error": "string"
+}
+
+## Conversation Endpoints
+
+### Create Conversation
+POST /api/v1/conversations
+Request: {
+  "user_id": "string",
+  "model": "string",
+  "provider": "string",
+  "system_prompt": "string",
+  "context": "object"
+}
+Response: {
+  "status": "success|error",
+  "conversation_id": "string",
+  "message": "string"
+}
+
+### Get Conversation
+GET /api/v1/conversations/{conversation_id}
+Response: {
+  "status": "success|error",
+  "conversation_id": "string",
+  "model": "string",
+  "provider": "string",
+  "messages": [
+    {
+      "role": "system|user|assistant",
+      "content": "string",
+      "timestamp": "timestamp"
+    }
+  ],
+  "context": "object",
+  "created_at": "timestamp",
+  "updated_at": "timestamp",
+  "error": "string"
+}
+
+### Add Message to Conversation
+POST /api/v1/conversations/{conversation_id}/messages
+Request: {
+  "role": "user|assistant",
+  "content": "string"
+}
+Response: {
+  "status": "success|error",
+  "message_id": "string",
+  "message": "object",
+  "error": "string"
+}
+
+### Get Conversation History
+GET /api/v1/conversations/{conversation_id}/history
+Query params: limit=number, offset=number
+Response: {
+  "status": "success|error",
+  "messages": ["array"],
+  "total": "number",
+  "limit": "number",
+  "offset": "number",
+  "error": "string"
+}
+
+### Delete Conversation
+DELETE /api/v1/conversations/{conversation_id}
+Response: {"status": "success|error", "message": "string"}
+
+### Clear Conversation
+POST /api/v1/conversations/{conversation_id}/clear
+Response: {"status": "success|error", "message": "string"}
+
+## Statistics Endpoints
+
+### Get Usage Statistics
+GET /api/v1/stats/usage
+Query params: start_date=timestamp, end_date=timestamp, model=string
+Response: {
+  "status": "success|error",
+  "usage": {
+    "total_tokens": "number",
+    "prompt_tokens": "number",
+    "completion_tokens": "number",
+    "total_requests": "number",
+    "by_model": "object",
+    "by_day": ["array"]
+  },
+  "error": "string"
+}
+
+### Get Performance Statistics
+GET /api/v1/stats/performance
+Response: {
+  "status": "success|error",
+  "performance": {
+    "avg_latency": "number",
+    "p95_latency": "number",
+    "p99_latency": "number",
+    "success_rate": "number",
+    "error_rate": "number",
+    "by_model": "object"
+  },
+  "error": "string"
+}
+
+## Health and Configuration
+
+### Health Check
+GET /api/v1/health
+Response: {
+  "status": "healthy|degraded|unhealthy",
+  "providers": [
+    {
+      "provider": "string",
+      "status": "active|inactive|error",
+      "models": ["array"],
+      "api_health": "healthy|unhealthy"
+    }
+  ],
+  "active_models": "number",
+  "rate_limit_status": "object",
+  "error_rate": "number",
+  "timestamp": "timestamp"
+}
+
+### Get Configuration
+GET /api/v1/config
+Response: {
+  "default_provider": "string",
+  "default_model": "string",
+  "max_tokens": "number",
+  "temperature": "number",
+  "rate_limits": "object",
+  "privacy_settings": "object"
+}
+
+### Update Configuration
+POST /api/v1/config
+Request: {
+  "default_provider": "string",
+  "default_model": "string",
+  "max_tokens": "number",
+  "temperature": "number",
+  "content_filter_enabled": "boolean"
+}
+Response: {"status": "success|error", "message": "string"}
+
+## Data Models
+
+### Message
+{
+  "role": "system|user|assistant",
+  "content": "string",
+  "name": "string",
+  "timestamp": "timestamp"
+}
+
+### Usage
+{
+  "prompt_tokens": "number",
+  "completion_tokens": "number",
+  "total_tokens": "number"
+}
+
+### Embedding
+{
+  "object": "embedding",
+  "embedding": ["array"],
+  "index": "number"
+}
+
+### Entity
+{
+  "name": "string",
+  "value": "string",
+  "type": "string",
+  "confidence": "number",
+  "start": "number",
+  "end": "number"
+}
+
+## Error Codes
+- 100: Provider not found
+- 101: Model not found
+- 102: Provider not enabled
+- 103: Invalid API key
+- 104: API connection error
+- 105: Rate limit exceeded
+- 106: Quota exceeded
+- 107: Model unavailable
+- 200: Invalid request data
+- 201: Text too long
+- 202: Prompt blocked by moderation
+- 300: Generation error
+- 301: Timeout
+- 302: Unknown error

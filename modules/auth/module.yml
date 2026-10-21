@@ -1,0 +1,34 @@
+name: auth
+version: 2026.10.21_1
+type: system
+required: true
+description: Authentication and authorization module for UniBot. Manages user access control, registration, and role-based permissions.
+author: UniBot Team
+license: MIT
+
+parameters:
+  default_admin_username: unibotadmin
+  default_admin_password: tellmepass
+  session_timeout: 3600
+  registration_enabled: true
+  storage_type: file
+
+interfaces:
+  - name: authentication
+    type: api
+    description: User login and session management
+  - name: authorization
+    type: api
+    description: Role and permission checks
+  - name: registration
+    type: api
+    description: New user registration
+  - name: user_management
+    type: api
+    description: Admin user management (CRUD)
+  - name: group_management
+    type: api
+    description: User group and role management
+
+dependencies:
+  - core

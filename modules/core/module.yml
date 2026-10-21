@@ -1,0 +1,27 @@
+name: core
+version: 2026.10.21_1
+type: system
+required: true
+description: Central module (core) for UniBot. Manages communication between all modules, provides async message queue, caching, and multithreading support.
+author: UniBot Team
+license: MIT
+
+parameters:
+  thread_pool_size: 10
+  max_queue_size: 1000
+  cache_ttl: 3600
+  timeout: 30
+  retry_attempts: 3
+
+interfaces:
+  - name: message_queue
+    type: internal
+    description: Async message queue for inter-module communication
+  - name: cache
+    type: internal
+    description: In-memory cache for temporary data storage
+  - name: logger
+    type: internal
+    description: Centralized logging system
+
+dependencies: []

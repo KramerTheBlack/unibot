@@ -1,0 +1,35 @@
+name: web
+version: 2026.10.21_1
+type: system
+required: true
+description: Web administration console for UniBot. Provides web interface for bot configuration and management.
+author: UniBot Team
+license: MIT
+
+parameters:
+  listen_address: 0.0.0.0
+  listen_port: 8080
+  use_https: false
+  ssl_cert: /etc/ssl/certs/web.crt
+  ssl_key: /etc/ssl/private/web.key
+  theme: default
+  title: UniBot Administration Console
+  admin_path: /admin
+
+interfaces:
+  - name: web_ui
+    type: http
+    description: Web-based user interface for administration
+  - name: api
+    type: http
+    description: REST API for programmatic access
+  - name: auth_proxy
+    type: internal
+    description: Proxy authentication requests to auth module
+  - name: core_proxy
+    type: internal
+    description: Proxy requests to core module
+
+dependencies:
+  - core
+  - auth

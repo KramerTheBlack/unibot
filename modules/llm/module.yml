@@ -1,0 +1,46 @@
+name: llm
+version: 2026.10.21_1
+type: system
+required: true
+description: LLM (Large Language Model) module for UniBot. Provides integration with AI models for text processing, generation, and analysis.
+author: UniBot Team
+license: MIT
+
+parameters:
+  default_model: gpt-4
+  default_provider: openai
+  max_tokens: 4096
+  temperature: 0.7
+  top_p: 1.0
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+  
+supported_providers:
+  - openai
+  - yandex
+  - google
+  - local
+
+interfaces:
+  - name: text_generation
+    type: api
+    description: Generate text responses from LLM
+  - name: text_analysis
+    type: api
+    description: Analyze text using LLM
+  - name: embedding
+    type: api
+    description: Generate text embeddings
+  - name: moderation
+    type: api
+    description: Content moderation using LLM
+  - name: model_management
+    type: api
+    description: Manage available models and configurations
+  - name: prompt_management
+    type: api
+    description: Manage prompts and templates
+
+dependencies:
+  - core
+  - auth

@@ -1,0 +1,98 @@
+{
+  "name": "apps",
+  "version": "2026.10.21_1",
+  "description": "Dynamic functional module loader for UniBot",
+  "endpoints": {
+    "list_apps": {
+      "method": "GET",
+      "path": "/api/v1/apps",
+      "description": "List all loaded apps",
+      "response": {
+        "apps": ["array of app objects"]
+      }
+    },
+    "get_app": {
+      "method": "GET",
+      "path": "/api/v1/apps/{app_name}",
+      "description": "Get information about a specific app",
+      "parameters": {
+        "app_name": "Name of the app"
+      },
+      "response": {
+        "app": "app object"
+      }
+    },
+    "load_app": {
+      "method": "POST",
+      "path": "/api/v1/apps/load",
+      "description": "Load an app",
+      "parameters": {
+        "app_name": "Name of the app to load (optional, loads all if not provided)"
+      },
+      "response": {
+        "status": "success/failure",
+        "loaded": ["array of loaded app names"]
+      }
+    },
+    "unload_app": {
+      "method": "POST",
+      "path": "/api/v1/apps/{app_name}/unload",
+      "description": "Unload an app",
+      "parameters": {
+        "app_name": "Name of the app to unload"
+      },
+      "response": {
+        "status": "success/failure",
+        "app": "app name"
+      }
+    },
+    "call_app": {
+      "method": "POST",
+      "path": "/api/v1/apps/{app_name}/call",
+      "description": "Call a function in an app",
+      "parameters": {
+        "app_name": "Name of the app",
+        "command": "Command/function to call",
+        "parameters": "Object with parameters for the command"
+      },
+      "response": {
+        "status": "success/failure",
+        "result": "result from the app function"
+      }
+    },
+    "health": {
+      "method": "GET",
+      "path": "/api/v1/health",
+      "description": "Health check endpoint",
+      "response": {
+        "status": "healthy",
+        "apps_loaded": 0
+      }
+    }
+  },
+  "commands": {
+    "load": {
+      "description": "Load an app",
+      "parameters": {
+        "app_name": "Name of the app to load"
+      }
+    },
+    "unload": {
+      "description": "Unload an app",
+      "parameters": {
+        "app_name": "Name of the app to unload"
+      }
+    },
+    "list": {
+      "description": "List all loaded apps"
+    }
+  },
+  "events": {
+    "app_loaded": {
+      "description": "Triggered when an app is loaded"
+    },
+    "app_unloaded": {
+      "description": "Triggered when an app is unloaded"
+    }
+  }
+}

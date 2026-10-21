@@ -1,0 +1,103 @@
+# Ignore secrets and sensitive files
+secrets/
+./secrets
+vibe/
+./vibe
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Testing
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Logs
+*.log
+logs/
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*~\n
+# Database files
+*.sqlite
+*.db
+*.sqlite3
+
+# Data directories
+data/
+
+# Local configuration
+local.conf
+local.yml
+local.yaml
+
+# Credentials
+pass.txt
+*.password
+*.passwd
+
+# Coverage
+.coverage
+cover/
+
+# Node (if used)
+node_modules/
+npm-debug.log
+
+# Git Bash
+.desktop.ini
