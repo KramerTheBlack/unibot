@@ -1,5 +1,5 @@
 name: web
-version: 2026.10.21_1
+version: 2026.10.21_2
 type: system
 required: true
 description: Web administration console for UniBot. Provides web interface for bot configuration and management.

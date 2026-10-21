@@ -1,5 +1,5 @@
 # UniBot Web Module Dockerfile
-# Version: 2026.10.21_1
+# Version: 2026.10.21_2
 
 FROM python:3.9-slim
 
@@ -21,6 +21,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install Python dependencies from requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Verify that Flask and its extensions are importable.
+# A broken/unpinned dependency set (e.g. an incompatible Werkzeug) makes Flask
+# unimportable, which would silently downgrade the module to the HTTP fallback.
+RUN python -c "import flask, flask_login, flask_wtf; import werkzeug.security; print('Flask OK:', flask.__version__, '| Werkzeug OK:', werkzeug.__version__)"
+
 # Create necessary directories
 RUN mkdir -p /var/log/unibot /var/unibot/secrets /etc/ssl/certs /etc/ssl/private /app/templates /app/static
 
@@ -29,7 +34,7 @@ RUN mkdir -p /app/templates/pages /app/templates/layouts /app/static/css /app/st
 
 # Set default environment variables
 ENV MODULE_NAME=web \
-    MODULE_VERSION=2026.10.21_1 \
+    MODULE_VERSION=2026.10.21_2 \
     WEB_PORT=8080 \
     FLASK_ENV=production \
     FLASK_APP=web.py
